@@ -1,7 +1,8 @@
 // DataRepository の IndexedDB 版の実装です。
 
-import type { Category, CategoryKind, Video, VideoInput } from '../types';
+import type { Category, CategoryKind, PracticeNote, PracticeNoteInput, Video, VideoInput } from '../types';
 import { createId } from '../utils/id';
+import { isDateOnly, parsePracticeCount, sortPracticeNotes } from '../utils/practice';
 import { BACKUP_APP_ID, BACKUP_VERSION, type BackupData, type ImportResult } from './backup';
 import { openDb, requestToPromise, STORES, transactionDone } from './db';
 import type { DataRepository } from './repository';
@@ -37,6 +38,18 @@ function normalizeInput(input: VideoInput): VideoInput {
     title: input.title.trim(),
     notes: input.notes.trim(),
     tags: Array.from(new Set(input.tags.map((t) => t.trim()).filter(Boolean))),
+  };
+}
+
+function normalizeNoteInput(input: PracticeNoteInput): PracticeNoteInput {
+  if (!isDateOnly(input.practiceDate)) throw new Error('練習日が正しくありません。');
+  return {
+    practiceDate: input.practiceDate,
+    videoId: input.videoId || null,
+    result: input.result,
+    memo: input.memo.trim(),
+    improvement: input.improvement.trim(),
+    practiceCount: parsePracticeCount(input.practiceCount),
   };
 }
 
@@ -91,6 +104,32 @@ export const indexedDbRepository: DataRepository = {
     const db = await openDb();
     const tx = db.transaction(STORES.videos, 'readwrite');
     tx.objectStore(STORES.videos).delete(id);
+    await transactionDone(tx);
+  },
+
+  async listPracticeNotes() {
+    return sortPracticeNotes(await getAll<PracticeNote>(STORES.practiceNotes));
+  },
+
+  async createPracticeNote(input) {
+    const now = new Date().toISOString();
+    const note: PracticeNote = { ...normalizeNoteInput(input), id: createId(), createdAt: now, updatedAt: now };
+    await putAll(STORES.practiceNotes, [note]);
+    return note;
+  },
+
+  async updatePracticeNote(id, input) {
+    const current = await getOne<PracticeNote>(STORES.practiceNotes, id);
+    if (!current) throw new Error('編集対象の練習ノートが見つかりません。削除された可能性があります。');
+    const note: PracticeNote = { ...current, ...normalizeNoteInput(input), updatedAt: new Date().toISOString() };
+    await putAll(STORES.practiceNotes, [note]);
+    return note;
+  },
+
+  async deletePracticeNote(id) {
+    const db = await openDb();
+    const tx = db.transaction(STORES.practiceNotes, 'readwrite');
+    tx.objectStore(STORES.practiceNotes).delete(id);
     await transactionDone(tx);
   },
 
@@ -159,10 +198,11 @@ export const indexedDbRepository: DataRepository = {
   },
 
   async exportAll() {
-    const [videos, positions, techniqueTypes] = await Promise.all([
+    const [videos, positions, techniqueTypes, practiceNotes] = await Promise.all([
       getAll<Video>(STORES.videos),
       listCategories('positions'),
       listCategories('techniqueTypes'),
+      getAll<PracticeNote>(STORES.practiceNotes),
     ]);
     return {
       app: BACKUP_APP_ID,
@@ -171,12 +211,13 @@ export const indexedDbRepository: DataRepository = {
       positions,
       techniqueTypes,
       videos,
+      practiceNotes: sortPracticeNotes(practiceNotes),
     } satisfies BackupData;
   },
 
   async importBackup(data, mode) {
     const db = await openDb();
-    const allStores = [STORES.videos, STORES.positions, STORES.techniqueTypes];
+    const allStores = [STORES.videos, STORES.positions, STORES.techniqueTypes, STORES.practiceNotes];
 
     if (mode === 'replace') {
       // 削除と書き込みを1つのトランザクションで行うので、失敗したら元のデータのまま残ります
@@ -185,21 +226,31 @@ export const indexedDbRepository: DataRepository = {
       data.positions.forEach((c) => tx.objectStore(STORES.positions).put(c));
       data.techniqueTypes.forEach((c) => tx.objectStore(STORES.techniqueTypes).put(c));
       data.videos.forEach((v) => tx.objectStore(STORES.videos).put(v));
+      data.practiceNotes.forEach((n) => tx.objectStore(STORES.practiceNotes).put(n));
       await transactionDone(tx);
       return {
         addedVideos: data.videos.length,
         skippedVideos: 0,
         addedCategories: data.positions.length + data.techniqueTypes.length,
+        addedNotes: data.practiceNotes.length,
+        skippedNotes: 0,
       };
     }
 
     // 追加モード: 先に既存データを読み、書き込み内容を全て決めてから1回で保存します
-    const [videos, positions, types] = await Promise.all([
+    const [videos, positions, types, notes] = await Promise.all([
       getAll<Video>(STORES.videos),
       listCategories('positions'),
       listCategories('techniqueTypes'),
+      getAll<PracticeNote>(STORES.practiceNotes),
     ]);
-    const result: ImportResult = { addedVideos: 0, skippedVideos: 0, addedCategories: 0 };
+    const result: ImportResult = {
+      addedVideos: 0,
+      skippedVideos: 0,
+      addedCategories: 0,
+      addedNotes: 0,
+      skippedNotes: 0,
+    };
 
     // ファイル内の分類IDを、既存の分類ID(同じIDか同じ名前)または新規分類に対応付けます
     const mergeCategories = (existing: Category[], incoming: Category[]) => {
@@ -239,10 +290,22 @@ export const indexedDbRepository: DataRepository = {
       ];
     });
 
+    // 練習ノートも同じIDのものはスキップします(動画のIDは変わらないので紐付けはそのまま保たれます)
+    const existingNoteIds = new Set(notes.map((n) => n.id));
+    const newNotes = data.practiceNotes.filter((n) => {
+      if (existingNoteIds.has(n.id)) {
+        result.skippedNotes++;
+        return false;
+      }
+      result.addedNotes++;
+      return true;
+    });
+
     const tx = db.transaction(allStores, 'readwrite');
     pos.toAdd.forEach((c) => tx.objectStore(STORES.positions).put(c));
     typ.toAdd.forEach((c) => tx.objectStore(STORES.techniqueTypes).put(c));
     newVideos.forEach((v) => tx.objectStore(STORES.videos).put(v));
+    newNotes.forEach((n) => tx.objectStore(STORES.practiceNotes).put(n));
     await transactionDone(tx);
     return result;
   },

@@ -11,7 +11,11 @@ export type Route =
   | { name: 'settings' }
   | { name: 'categories'; kind: 'positions' | 'techniqueTypes' }
   | { name: 'tags' }
-  | { name: 'backup'; restore: boolean };
+  | { name: 'backup'; restore: boolean }
+  | { name: 'notes' }
+  | { name: 'noteNew'; videoId: string | null }
+  | { name: 'noteDetail'; id: string }
+  | { name: 'noteEdit'; id: string };
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
@@ -19,6 +23,13 @@ export function parseRoute(hash: string): Route {
   if (a === 'new') return { name: 'new' };
   if (a === 'videos' && b && c === 'edit') return { name: 'edit', id: b };
   if (a === 'videos' && b) return { name: 'detail', id: b };
+  if (a === 'notes') {
+    // #/notes/new または #/notes/new/動画ID(動画詳細から作成したとき)
+    if (b === 'new') return { name: 'noteNew', videoId: c ?? null };
+    if (b && c === 'edit') return { name: 'noteEdit', id: b };
+    if (b) return { name: 'noteDetail', id: b };
+    return { name: 'notes' };
+  }
   if (a === 'settings') {
     if (b === 'positions' || b === 'techniqueTypes') return { name: 'categories', kind: b };
     if (b === 'tags') return { name: 'tags' };

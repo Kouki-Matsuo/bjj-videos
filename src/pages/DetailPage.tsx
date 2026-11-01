@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { categoryName, useAppData } from '../AppData';
 import { ConfirmDialog } from '../components/Dialog';
-import { ExternalIcon, HeartIcon, PencilIcon, TrashIcon, VideoIcon } from '../components/Icons';
+import { ExternalIcon, HeartIcon, PencilIcon, PlusIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import { PageHeader } from '../components/Layout';
+import { ResultBadge } from '../components/Practice';
 import { Thumbnail } from '../components/Thumbnail';
 import { navigate } from '../router';
 import { repository } from '../storage/repository';
 import { formatDateTime } from '../utils/format';
+import { formatPracticeDate } from '../utils/practice';
 import { isSafeExternalUrl } from '../utils/url';
 
 export function DetailPage({ videoId }: { videoId: string }) {
-  const { videos, positions, techniqueTypes, loading, reload, showToast } = useAppData();
+  const { videos, positions, techniqueTypes, practiceNotes, loading, reload, showToast } = useAppData();
   const video = videos.find((v) => v.id === videoId);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -26,6 +28,9 @@ export function DetailPage({ videoId }: { videoId: string }) {
       </div>
     );
   }
+
+  // この動画に紐付いた練習ノート(練習日が新しい順に並んでいます)
+  const practiceHistory = practiceNotes.filter((n) => n.videoId === video.id);
 
   const positionName = categoryName(positions, video.positionId);
   const typeName = categoryName(techniqueTypes, video.techniqueTypeId);
@@ -137,6 +142,40 @@ export function DetailPage({ videoId }: { videoId: string }) {
       <h2 className="section-title">メモ</h2>
       <div className="memo-box">{video.notes || <span className="muted">メモはありません</span>}</div>
 
+      <div className="history-head">
+        <h2 className="section-title">練習履歴</h2>
+        {practiceHistory.length > 0 && <span className="count-chip">練習記録 {practiceHistory.length}件</span>}
+      </div>
+      {practiceHistory.length > 0 ? (
+        <ol className="history-list">
+          {practiceHistory.map((n, i) => (
+            <li key={n.id}>
+              <button
+                type="button"
+                className="history-item"
+                onClick={() => navigate(`/notes/${encodeURIComponent(n.id)}`)}
+              >
+                <span className="history-num">{i + 1}</span>
+                <span className="history-body">
+                  <span className="history-date">{formatPracticeDate(n.practiceDate)}</span>
+                  <ResultBadge result={n.result} />
+                  {(n.memo || n.improvement) && <span className="history-memo">{n.memo || n.improvement}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="history-empty muted">この動画の練習記録はまだありません。</p>
+      )}
+      <button
+        type="button"
+        className="btn btn-secondary btn-block history-add"
+        onClick={() => navigate(`/notes/new/${encodeURIComponent(video.id)}`)}
+      >
+        <PlusIcon size={18} /> この動画で練習ノートを作成
+      </button>
+
       {error && <p className="banner banner-error">{error}</p>}
 
       <button type="button" className="btn btn-danger-outline btn-block" onClick={() => setConfirmDelete(true)}>
@@ -146,7 +185,14 @@ export function DetailPage({ videoId }: { videoId: string }) {
       {confirmDelete && (
         <ConfirmDialog
           title="この動画を削除しますか?"
-          message={`「${video.title}」を削除します。この操作は取り消せません。`}
+          message={
+            <>
+              <p>「{video.title}」を削除します。この操作は取り消せません。</p>
+              {practiceHistory.length > 0 && (
+                <p>この動画の練習ノート{practiceHistory.length}件は削除されずに残ります。</p>
+              )}
+            </>
+          }
           confirmLabel="削除する"
           danger
           busy={deleting}

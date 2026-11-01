@@ -51,3 +51,26 @@ export const EMPTY_FILTER: VideoFilter = {
   favoritesOnly: false,
   tags: [],
 };
+
+/** 練習結果。success: 成功 / partial: 一部成功 / failure: 失敗 / unrated: 未評価 */
+export type PracticeResult = 'success' | 'partial' | 'failure' | 'unrated';
+
+/** 練習ノート1件分のデータ */
+export interface PracticeNote {
+  id: string;
+  /** 練習日(YYYY-MM-DD) */
+  practiceDate: string;
+  /** 関連動画のID(未選択なら null)。動画が削除されてもノートは残ります */
+  videoId: string | null;
+  result: PracticeResult;
+  /** 練習メモ */
+  memo: string;
+  /** 改善点・次回意識すること */
+  improvement: string;
+  /** 練習回数(未入力なら null) */
+  practiceCount: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PracticeNoteInput = Omit<PracticeNote, 'id' | 'createdAt' | 'updatedAt'>;

@@ -3,7 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { repository } from './storage/repository';
-import { EMPTY_FILTER, type Category, type Video, type VideoFilter } from './types';
+import { EMPTY_FILTER, type Category, type PracticeNote, type Video, type VideoFilter } from './types';
 
 interface AppDataValue {
   loading: boolean;
@@ -11,6 +11,8 @@ interface AppDataValue {
   videos: Video[];
   positions: Category[];
   techniqueTypes: Category[];
+  /** 練習ノート(練習日が新しい順) */
+  practiceNotes: PracticeNote[];
   /** 全動画で使われているタグ(使用回数の多い順) */
   allTags: string[];
   reload: () => Promise<void>;
@@ -28,20 +30,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [positions, setPositions] = useState<Category[]>([]);
   const [techniqueTypes, setTechniqueTypes] = useState<Category[]>([]);
+  const [practiceNotes, setPracticeNotes] = useState<PracticeNote[]>([]);
   const [filter, setFilter] = useState<VideoFilter>(EMPTY_FILTER);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 
   const reload = useCallback(async () => {
     try {
-      const [v, p, t] = await Promise.all([
+      const [v, p, t, n] = await Promise.all([
         repository.listVideos(),
         repository.listCategories('positions'),
         repository.listCategories('techniqueTypes'),
+        repository.listPracticeNotes(),
       ]);
       setVideos(v);
       setPositions(p);
       setTechniqueTypes(t);
+      setPracticeNotes(n);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'データの読み込みに失敗しました。');
@@ -73,6 +78,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       videos,
       positions,
       techniqueTypes,
+      practiceNotes,
       allTags,
       reload,
       filter,
@@ -80,7 +86,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toast,
       showToast,
     }),
-    [loading, loadError, videos, positions, techniqueTypes, allTags, reload, filter, toast, showToast],
+    [loading, loadError, videos, positions, techniqueTypes, practiceNotes, allTags, reload, filter, toast, showToast],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

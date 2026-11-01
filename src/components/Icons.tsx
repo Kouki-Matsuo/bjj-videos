@@ -107,3 +107,21 @@ export const SaveIcon = (p: IconProps) => (
 export const ChevronDownIcon = (p: IconProps) => (
   <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>
 );
+export const NoteIcon = (p: IconProps) => (
+  <Svg {...p}><path d="M6 3.5h10.5a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z" /><path d="M9 8h6M9 12h6M9 16h3" /></Svg>
+);
+export const CheckCircleIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.7 2.7L16 9.8" /></Svg>
+);
+export const MinusCircleIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 12h8" /></Svg>
+);
+export const XCircleIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="m9 9 6 6M15 9l-6 6" /></Svg>
+);
+export const HelpCircleIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.5M12 17h.01" /></Svg>
+);
+export const MinusIcon = (p: IconProps) => (
+  <Svg {...p}><path d="M5 12h14" /></Svg>
+);

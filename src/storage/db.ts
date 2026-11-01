@@ -5,12 +5,14 @@ import type { Category } from '../types';
 import { createId } from '../utils/id';
 
 const DB_NAME = 'bjj-video-manager';
-const DB_VERSION = 1;
+// 1: 動画・分類 / 2: 練習ノートを追加
+const DB_VERSION = 2;
 
 export const STORES = {
   videos: 'videos',
   positions: 'positions',
   techniqueTypes: 'techniqueTypes',
+  practiceNotes: 'practiceNotes',
 } as const;
 
 const DEFAULT_POSITIONS = [
@@ -59,17 +61,29 @@ export function openDb(): Promise<IDBDatabase> {
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     // 初回(またはバージョンアップ時)だけ呼ばれます。ここで保存先と初期分類を作ります。
-    req.onupgradeneeded = () => {
+    // 既存の保存先には手を付けず、足りない保存先だけを追加するので、登録済みのデータはそのまま残ります。
+    req.onupgradeneeded = (event) => {
       const db = req.result;
-      const videos = db.createObjectStore(STORES.videos, { keyPath: 'id' });
-      videos.createIndex('createdAt', 'createdAt');
-      const positions = db.createObjectStore(STORES.positions, { keyPath: 'id' });
-      const types = db.createObjectStore(STORES.techniqueTypes, { keyPath: 'id' });
-      toCategories(DEFAULT_POSITIONS).forEach((c) => positions.put(c));
-      toCategories(DEFAULT_TECHNIQUE_TYPES).forEach((c) => types.put(c));
+      if (event.oldVersion < 1) {
+        const videos = db.createObjectStore(STORES.videos, { keyPath: 'id' });
+        videos.createIndex('createdAt', 'createdAt');
+        const positions = db.createObjectStore(STORES.positions, { keyPath: 'id' });
+        const types = db.createObjectStore(STORES.techniqueTypes, { keyPath: 'id' });
+        toCategories(DEFAULT_POSITIONS).forEach((c) => positions.put(c));
+        toCategories(DEFAULT_TECHNIQUE_TYPES).forEach((c) => types.put(c));
+      }
+      if (event.oldVersion < 2) {
+        const notes = db.createObjectStore(STORES.practiceNotes, { keyPath: 'id' });
+        notes.createIndex('videoId', 'videoId');
+      }
     };
     req.onsuccess = () => {
       requestPersistentStorage();
+      // 別のタブで新しい版のアプリが開かれたら接続を閉じ、データベースの更新を妨げないようにします
+      req.result.onversionchange = () => {
+        req.result.close();
+        dbPromise = null;
+      };
       resolve(req.result);
     };
     req.onerror = () => {
