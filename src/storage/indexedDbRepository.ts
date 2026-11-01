@@ -1,6 +1,8 @@
 // DataRepository の IndexedDB 版の実装です。
 
 import type {
+  BodyRecord,
+  BodyRecordInput,
   CalendarEvent,
   CalendarEventInput,
   Category,
@@ -18,6 +20,7 @@ import type {
   Video,
   VideoInput,
 } from '../types';
+import { normalizeBodyInput } from '../utils/body';
 import { eventTypeLabel, validateEventDates } from '../utils/calendar';
 import { createId } from '../utils/id';
 import { isDateOnly, parsePracticeCount, sortPracticeNotes } from '../utils/practice';
@@ -434,6 +437,36 @@ export const indexedDbRepository: DataRepository = {
     await transactionDone(tx);
   },
 
+  // ---------- 体重 ----------
+  async listBodyRecords() {
+    return (await getAll<BodyRecord>(STORES.bodyRecords)).sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? '') || b.createdAt.localeCompare(a.createdAt),
+    );
+  },
+
+  async createBodyRecord(input: BodyRecordInput) {
+    const now = new Date().toISOString();
+    const record: BodyRecord = { ...normalizeBodyInput(input), id: createId(), createdAt: now, updatedAt: now };
+    await putAll(STORES.bodyRecords, [record]);
+    return record;
+  },
+
+  async updateBodyRecord(id, input) {
+    const current = await getOne<BodyRecord>(STORES.bodyRecords, id);
+    if (!current) throw new Error('編集対象の記録が見つかりません。削除された可能性があります。');
+    const record: BodyRecord = { ...current, ...normalizeBodyInput(input), updatedAt: new Date().toISOString() };
+    await putAll(STORES.bodyRecords, [record]);
+    return record;
+  },
+
+  async deleteBodyRecord(id) {
+    const db = await openDb();
+    const tx = db.transaction(STORES.bodyRecords, 'readwrite');
+    tx.objectStore(STORES.bodyRecords).delete(id);
+    await transactionDone(tx);
+  },
+
   listCategories,
 
   async addCategory(kind, name) {
@@ -506,11 +539,12 @@ export const indexedDbRepository: DataRepository = {
       getAll<PracticeNote>(STORES.practiceNotes),
       getAll<CalendarEvent>(STORES.events),
     ]);
-    const [exercises, strengthVideos, strengthPlans, strengthRecords] = await Promise.all([
+    const [exercises, strengthVideos, strengthPlans, strengthRecords, bodyRecords] = await Promise.all([
       this.listExercises(),
       this.listStrengthVideos(),
       this.listStrengthPlans(),
       this.listStrengthRecords(),
+      this.listBodyRecords(),
     ]);
     return {
       app: BACKUP_APP_ID,
@@ -525,6 +559,7 @@ export const indexedDbRepository: DataRepository = {
       strengthVideos,
       strengthPlans,
       strengthRecords,
+      bodyRecords,
     } satisfies BackupData;
   },
 
@@ -540,8 +575,10 @@ export const indexedDbRepository: DataRepository = {
       STORES.strengthVideos,
       STORES.strengthPlans,
       STORES.strengthRecords,
+      STORES.bodyRecords,
     ];
-    const strengthCount = data.strengthVideos.length + data.strengthPlans.length + data.strengthRecords.length;
+    const strengthCount =
+      data.strengthVideos.length + data.strengthPlans.length + data.strengthRecords.length + data.bodyRecords.length;
 
     if (mode === 'replace') {
       // 削除と書き込みを1つのトランザクションで行うので、失敗したら元のデータのまま残ります
@@ -557,6 +594,7 @@ export const indexedDbRepository: DataRepository = {
       data.strengthVideos.forEach((v) => tx.objectStore(STORES.strengthVideos).put(v));
       data.strengthPlans.forEach((p) => tx.objectStore(STORES.strengthPlans).put(p));
       data.strengthRecords.forEach((r) => tx.objectStore(STORES.strengthRecords).put(r));
+      data.bodyRecords.forEach((r) => tx.objectStore(STORES.bodyRecords).put(r));
       await transactionDone(tx);
       return {
         addedVideos: data.videos.length,
@@ -579,11 +617,12 @@ export const indexedDbRepository: DataRepository = {
       getAll<PracticeNote>(STORES.practiceNotes),
       getAll<CalendarEvent>(STORES.events),
     ]);
-    const [exercises, sVideos, sPlans, sRecords] = await Promise.all([
+    const [exercises, sVideos, sPlans, sRecords, bodyRecords] = await Promise.all([
       this.listExercises(),
       this.listStrengthVideos(),
       this.listStrengthPlans(),
       this.listStrengthRecords(),
+      this.listBodyRecords(),
     ]);
     const result: ImportResult = {
       addedVideos: 0,
@@ -701,7 +740,10 @@ export const indexedDbRepository: DataRepository = {
       entries: r.entries.map((e) => ({ ...e, exerciseId: mapExercise(e.exerciseId) })),
     }));
 
+    const newBodyRecords = skipExisting(data.bodyRecords, bodyRecords);
+
     const tx = db.transaction(allStores, 'readwrite');
+    newBodyRecords.forEach((r) => tx.objectStore(STORES.bodyRecords).put(r));
     exercisesToAdd.forEach((e) => tx.objectStore(STORES.exercises).put(e));
     newSVideos.forEach((v) => tx.objectStore(STORES.strengthVideos).put(v));
     newSPlans.forEach((p) => tx.objectStore(STORES.strengthPlans).put(p));

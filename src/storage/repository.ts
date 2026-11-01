@@ -3,6 +3,8 @@
 // 同じ関数を持つ別の実装(例: cloudRepository.ts)を作り、下の `repository` を差し替えるだけで済みます。
 
 import type {
+  BodyRecord,
+  BodyRecordInput,
   CalendarEvent,
   CalendarEventInput,
   Category,
@@ -73,6 +75,13 @@ export interface DataRepository {
   updateStrengthRecord(id: string, input: StrengthRecordInput): Promise<StrengthRecord>;
   /** 実績を削除します。予定から入力した実績なら、その予定を「予定」に戻します */
   deleteStrengthRecord(id: string): Promise<void>;
+
+  // ----- 体重 -----
+  /** 体重記録の一覧(新しい順) */
+  listBodyRecords(): Promise<BodyRecord[]>;
+  createBodyRecord(input: BodyRecordInput): Promise<BodyRecord>;
+  updateBodyRecord(id: string, input: BodyRecordInput): Promise<BodyRecord>;
+  deleteBodyRecord(id: string): Promise<void>;
 
   listCategories(kind: CategoryKind): Promise<Category[]>;
   addCategory(kind: CategoryKind, name: string): Promise<Category>;

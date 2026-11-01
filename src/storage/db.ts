@@ -7,7 +7,8 @@ import { createId } from '../utils/id';
 
 const DB_NAME = 'bjj-video-manager';
 // 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加 / 4: 筋トレ(種目・動画・予定・実績)を追加
-const DB_VERSION = 4;
+// 5: 体重記録を追加
+const DB_VERSION = 5;
 
 export const STORES = {
   videos: 'videos',
@@ -19,6 +20,7 @@ export const STORES = {
   strengthVideos: 'strengthVideos',
   strengthPlans: 'strengthPlans',
   strengthRecords: 'strengthRecords',
+  bodyRecords: 'bodyRecords',
 } as const;
 
 const DEFAULT_POSITIONS = [
@@ -105,6 +107,9 @@ export function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(STORES.strengthVideos, { keyPath: 'id' });
         db.createObjectStore(STORES.strengthPlans, { keyPath: 'id' }).createIndex('date', 'date');
         db.createObjectStore(STORES.strengthRecords, { keyPath: 'id' }).createIndex('date', 'date');
+      }
+      if (event.oldVersion < 5) {
+        db.createObjectStore(STORES.bodyRecords, { keyPath: 'id' }).createIndex('date', 'date');
       }
     };
     req.onsuccess = () => {

@@ -11,6 +11,7 @@ import type { StrengthVideo } from '../../types';
 import { formatPracticeDate, todayString } from '../../utils/practice';
 import { BODY_PARTS, exerciseKindLabel, exerciseName } from '../../utils/strength';
 import { PlanCard, RecordCard } from './StrengthCards';
+import { BodyTab } from './BodyPages';
 import { StrengthStats } from './StrengthStats';
 
 export function StrengthPage({ tab, exerciseId }: { tab: StrengthTab; exerciseId: string | null }) {
@@ -21,6 +22,7 @@ export function StrengthPage({ tab, exerciseId }: { tab: StrengthTab; exerciseId
       {loadError && <p className="banner banner-error">{loadError}</p>}
       <StrengthTabs active={tab} />
       {tab === 'log' && <LogTab />}
+      {tab === 'body' && <BodyTab />}
       {tab === 'stats' && <StrengthStats exerciseId={exerciseId} />}
       {tab === 'videos' && <VideosTab />}
       {tab === 'exercises' && <ExercisesTab />}

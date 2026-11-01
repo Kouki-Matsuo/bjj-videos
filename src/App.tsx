@@ -11,6 +11,7 @@ import { PracticeListPage } from './pages/PracticeListPage';
 import { PracticeNoteDetailPage } from './pages/PracticeNoteDetailPage';
 import { PracticeNoteFormPage } from './pages/PracticeNoteFormPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { BodyEditPage } from './pages/strength/BodyPages';
 import { ExerciseFormPage } from './pages/strength/ExerciseFormPage';
 import { PlanDetailPage, PlanFormPage } from './pages/strength/PlanPages';
 import { RecordDetailPage, RecordFormPage } from './pages/strength/RecordPages';
@@ -107,6 +108,9 @@ export function App() {
           planId={route.planId}
         />
       );
+      break;
+    case 'bodyEdit':
+      page = <BodyEditPage key={route.id} recordId={route.id} />;
       break;
     case 'recordDetail':
       page = <RecordDetailPage recordId={route.id} />;

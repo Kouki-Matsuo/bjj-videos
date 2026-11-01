@@ -2,6 +2,7 @@
 // 検証はデータベースに書き込む前に全て終わらせるので、不正なファイルで既存データが壊れることはありません。
 
 import type {
+  BodyRecord,
   CalendarEvent,
   Category,
   Exercise,
@@ -14,16 +15,17 @@ import type {
   Video,
 } from '../types';
 import { isExerciseKind, isPlanStatus, parseNonNegative, parsePositive } from '../utils/strength';
+import { isValidBodyFat, isValidWeight } from '../utils/body';
 import { isEventType, isTimeString, validateEventDates } from '../utils/calendar';
 import { isDateOnly, isPracticeResult, parsePracticeCount } from '../utils/practice';
 import { isAllowedVideoUrl } from '../utils/url';
 
 export const BACKUP_APP_ID = 'bjj-video-manager';
 /**
- * 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加 / 4: 筋トレを追加
+ * 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加 / 4: 筋トレを追加 / 5: 体重記録を追加
  * (古いバージョンのファイルも引き続き読み込めます)
  */
-export const BACKUP_VERSION = 4;
+export const BACKUP_VERSION = 5;
 
 export interface BackupData {
   app: typeof BACKUP_APP_ID;
@@ -39,6 +41,7 @@ export interface BackupData {
   strengthVideos: StrengthVideo[];
   strengthPlans: StrengthPlan[];
   strengthRecords: StrengthRecord[];
+  bodyRecords: BodyRecord[];
 }
 
 /** replace: 既存データを置き換える / merge: 既存データに追加する */
@@ -52,7 +55,7 @@ export interface ImportResult {
   skippedNotes: number;
   addedEvents: number;
   skippedEvents: number;
-  /** 筋トレの動画・予定・実績 */
+  /** 筋トレの動画・予定・実績・体重記録 */
   addedStrength: number;
   skippedStrength: number;
 }
@@ -347,6 +350,27 @@ function validateStrengthRecords(value: unknown): StrengthRecord[] {
   });
 }
 
+function validateBodyRecords(value: unknown): BodyRecord[] {
+  if (value === undefined) return [];
+  return checkIds(value, '体重記録').map((r, i) => {
+    const where = `体重記録の${i + 1}件目`;
+    if (!isDateOnly(r.date)) throw new BackupValidationError(`${where}の日付が正しくありません。`);
+    if (!isValidWeight(r.weight)) throw new BackupValidationError(`${where}の体重が正しくありません。`);
+    if (r.bodyFat !== null && r.bodyFat !== undefined && !isValidBodyFat(r.bodyFat))
+      throw new BackupValidationError(`${where}の体脂肪率が正しくありません。`);
+    return {
+      id: r.id as string,
+      date: r.date,
+      time: isTimeString(r.time) ? r.time : null,
+      weight: r.weight as number,
+      bodyFat: isValidBodyFat(r.bodyFat) ? r.bodyFat : null,
+      memo: typeof r.memo === 'string' ? r.memo : '',
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+    };
+  });
+}
+
 /** JSON文字列を解析・検証し、問題なければ BackupData を返します。問題があれば日本語のエラーを投げます */
 export function parseBackup(text: string): BackupData {
   let json: unknown;
@@ -375,6 +399,7 @@ export function parseBackup(text: string): BackupData {
   );
   const strengthPlans = validateStrengthPlans(json.strengthPlans);
   const strengthRecords = validateStrengthRecords(json.strengthRecords);
+  const bodyRecords = validateBodyRecords(json.bodyRecords);
   return {
     app: BACKUP_APP_ID,
     version: json.version,
@@ -388,5 +413,6 @@ export function parseBackup(text: string): BackupData {
     strengthVideos,
     strengthPlans,
     strengthRecords,
+    bodyRecords,
   };
 }

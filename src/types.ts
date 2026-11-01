@@ -201,3 +201,23 @@ export interface StrengthRecord {
 }
 
 export type StrengthRecordInput = Omit<StrengthRecord, 'id' | 'createdAt' | 'updatedAt'>;
+
+// ===================== 体重 =====================
+
+/** 体重・体脂肪率の記録。同じ日に複数あってもよく、グラフ・分析ではその日の平均値を使います */
+export interface BodyRecord {
+  id: string;
+  /** 測定日(YYYY-MM-DD) */
+  date: string;
+  /** 測定時間(HH:MM)。未入力なら null */
+  time: string | null;
+  /** 体重(kg) */
+  weight: number;
+  /** 体脂肪率(%)。未入力なら null */
+  bodyFat: number | null;
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BodyRecordInput = Omit<BodyRecord, 'id' | 'createdAt' | 'updatedAt'>;

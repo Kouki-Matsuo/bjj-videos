@@ -7,6 +7,7 @@ import { navigate } from '../../router';
 import type { ExerciseKind } from '../../types';
 import { todayString, formatPracticeDate } from '../../utils/practice';
 import { exerciseHistory, formatSeconds, type EntryStats } from '../../utils/strength';
+import { CorrelationView } from './CorrelationView';
 
 type MetricKey = 'maxWeight' | 'maxReps' | 'volume' | 'totalReps';
 
@@ -50,7 +51,37 @@ function monthlyCounts(dates: string[]): { label: string; value: number }[] {
   });
 }
 
-export function StrengthStats({ exerciseId: routeExerciseId }: { exerciseId: string | null }) {
+/** 分析タブ:「種目別」と「体重との相関」を切り替えます */
+export function StrengthStats({ exerciseId }: { exerciseId: string | null }) {
+  const [mode, setMode] = useState<'exercise' | 'body'>('exercise');
+  return (
+    <>
+      <div className="segmented small" role="tablist" aria-label="分析の種類">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'exercise'}
+          className={`segmented-item ${mode === 'exercise' ? 'active' : ''}`}
+          onClick={() => setMode('exercise')}
+        >
+          種目別
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'body'}
+          className={`segmented-item ${mode === 'body' ? 'active' : ''}`}
+          onClick={() => setMode('body')}
+        >
+          体重との相関
+        </button>
+      </div>
+      {mode === 'exercise' ? <ExerciseStats exerciseId={exerciseId} /> : <CorrelationView />}
+    </>
+  );
+}
+
+function ExerciseStats({ exerciseId: routeExerciseId }: { exerciseId: string | null }) {
   const { exercises, strengthRecords } = useAppData();
 
   // 初期表示は、指定された種目 → 記録が最も多い種目 → 先頭の種目

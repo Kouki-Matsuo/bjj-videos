@@ -10,6 +10,7 @@ import { Thumbnail } from './Thumbnail';
 
 const TABS: { tab: StrengthTab; label: string; path: string }[] = [
   { tab: 'log', label: '記録', path: '/strength' },
+  { tab: 'body', label: '体重', path: '/strength/body' },
   { tab: 'stats', label: '分析', path: '/strength/stats' },
   { tab: 'videos', label: '動画', path: '/strength/videos' },
   { tab: 'exercises', label: '種目', path: '/strength/exercises' },
@@ -176,41 +177,74 @@ const shortDate = (d: string) => {
   return `${m}/${day}`;
 };
 
-/** 縦軸の目盛りを、きりのよい数字で3本ほど引きます */
-function niceTicks(max: number): number[] {
-  if (max <= 0) return [0];
-  const raw = max / 3;
+/** 縦軸の目盛りを、きりのよい数字で3〜5本ほど引きます */
+function niceTicks(min: number, max: number): number[] {
+  const span = max - min || Math.abs(max) || 1;
+  const raw = span / 3;
   const pow = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? raw;
+  const start = Math.floor(min / step) * step;
   const ticks: number[] = [];
-  for (let v = 0; v <= max + step * 0.001; v += step) ticks.push(Math.round(v * 100) / 100);
-  if (ticks[ticks.length - 1] < max) ticks.push(Math.round((ticks[ticks.length - 1] + step) * 100) / 100);
+  for (let v = start; v < max + step * 0.999; v += step) ticks.push(Math.round(v * 100) / 100);
+  if (ticks.length < 2) ticks.push(Math.round((start + step) * 100) / 100);
   return ticks;
 }
 
-const compact = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const compact = (n: number) =>
+  Math.abs(n) >= 10000 ? `${Math.round(n / 1000)}k` : Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
-/** 折れ線グラフ(日付ごとの推移) */
+/** 折れ線グラフ(日付ごとの推移)。trend を渡すと、長期的な傾向として点線を重ねます */
 export function LineChart({
   points,
   unit,
   label,
+  zeroBased = true,
+  trend,
+  trendLabel = '傾向',
 }: {
-  points: { date: string; value: number }[];
+  points: { date: string; value: number; label?: string }[];
   unit: string;
   label: string;
+  /** false にすると、縦軸を0からではなく記録の範囲に合わせます(体重など) */
+  zeroBased?: boolean;
+  trend?: (number | null)[];
+  trendLabel?: string;
 }) {
-  const max = Math.max(...points.map((p) => p.value), 0);
-  const ticks = niceTicks(max);
-  const top = ticks[ticks.length - 1] || 1;
+  const values = [...points.map((p) => p.value), ...(trend ?? []).filter((v): v is number => v !== null)];
+  const rawMin = zeroBased ? 0 : Math.min(...values);
+  const rawMax = Math.max(...values, zeroBased ? 0 : -Infinity);
+  const pad = zeroBased ? 0 : Math.max((rawMax - rawMin) * 0.15, 0.5);
+  const ticks = niceTicks(rawMin - pad, rawMax + pad);
+  const lo = ticks[0];
+  const hi = ticks[ticks.length - 1] === lo ? lo + 1 : ticks[ticks.length - 1];
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
-  const x = (i: number) => PAD.left + (points.length === 1 ? innerW / 2 : (innerW * i) / (points.length - 1));
-  const y = (v: number) => PAD.top + innerH - (innerH * v) / top;
+  // 横軸は日付の間隔に合わせます(記録の間があいた期間も正しい長さで表示されます)
+  const times = points.map((p) => new Date(`${p.date.length === 7 ? `${p.date}-01` : p.date}T00:00:00`).getTime());
+  const t0 = times[0];
+  const span = times[times.length - 1] - t0;
+  const x = (i: number) =>
+    PAD.left + (points.length === 1 || !span ? innerW / 2 : (innerW * (times[i] - t0)) / span);
+  const y = (v: number) => PAD.top + innerH - (innerH * (v - lo)) / (hi - lo);
   const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
+  const trendPath = (trend ?? [])
+    .map((v, i) => (v === null ? null : { i, v }))
+    .filter((t): t is { i: number; v: number } => t !== null)
+    .map((t, k) => `${k ? 'L' : 'M'}${x(t.i).toFixed(1)},${y(t.v).toFixed(1)}`)
+    .join(' ');
   const best = points.reduce((b, p, i) => (p.value > points[b].value ? i : b), 0);
-  // 日付ラベルは最大5つまで間引いて表示します
-  const labelEvery = Math.max(1, Math.ceil(points.length / 5));
+  // 日付ラベルは、重ならないよう間隔をあけて表示します(最初と最後は必ず表示)
+  const labelIndexes: number[] = [];
+  points.forEach((_, i) => {
+    const prev = labelIndexes[labelIndexes.length - 1];
+    if (prev === undefined || x(i) - x(prev) >= 52) labelIndexes.push(i);
+  });
+  const lastIdx = points.length - 1;
+  if (labelIndexes[labelIndexes.length - 1] !== lastIdx) {
+    if (labelIndexes.length > 1 && x(lastIdx) - x(labelIndexes[labelIndexes.length - 1]) < 52) labelIndexes.pop();
+    labelIndexes.push(lastIdx);
+  }
+  const many = points.length > 40;
 
   return (
     <figure className="chart" aria-label={label}>
@@ -223,23 +257,93 @@ export function LineChart({
             </text>
           </g>
         ))}
-        <path d={path} className="chart-line" />
-        {points.map((p, i) => (
-          <circle key={p.date} cx={x(i)} cy={y(p.value)} r={i === best ? 4.5 : 3} className={i === best ? 'chart-dot best' : 'chart-dot'} />
+        <path d={path} className={`chart-line ${trendPath ? 'faint' : ''}`} />
+        {trendPath && <path d={trendPath} className="chart-trend" />}
+        {!many &&
+          points.map((p, i) => (
+            <circle
+              key={p.date}
+              cx={x(i)}
+              cy={y(p.value)}
+              r={i === best ? 4.5 : 3}
+              className={i === best ? 'chart-dot best' : 'chart-dot'}
+            />
+          ))}
+        {labelIndexes.map((i) => (
+          <text key={`l-${points[i].date}`} x={x(i)} y={H - 8} className="chart-axis" textAnchor="middle">
+            {points[i].label ?? shortDate(points[i].date)}
+          </text>
         ))}
-        {points.map(
-          (p, i) =>
-            (i % labelEvery === 0 || i === points.length - 1) && (
-              <text key={`l-${p.date}`} x={x(i)} y={H - 8} className="chart-axis" textAnchor="middle">
-                {shortDate(p.date)}
-              </text>
-            ),
-        )}
       </svg>
       <figcaption className="chart-caption">
-        単位:{unit}・<span className="chart-best-mark" />
-        最高値
+        単位:{unit}
+        {trendPath ? (
+          <>
+            ・<span className="chart-trend-mark" />
+            {trendLabel}
+          </>
+        ) : (
+          !many && (
+            <>
+              ・<span className="chart-best-mark" />
+              最高値
+            </>
+          )
+        )}
       </figcaption>
+    </figure>
+  );
+}
+
+/** 散布図(横軸と縦軸の2つの値の関係) */
+export function ScatterChart({
+  points,
+  xLabel,
+  yLabel,
+  label,
+}: {
+  points: { x: number; y: number; label: string }[];
+  xLabel: string;
+  yLabel: string;
+  label: string;
+}) {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const xt = niceTicks(Math.min(0, ...xs), Math.max(...xs, 1));
+  const yt = niceTicks(Math.min(...ys, 0), Math.max(...ys, 0));
+  const [x0, x1] = [xt[0], xt[xt.length - 1]];
+  const [y0, y1] = [yt[0], yt[yt.length - 1] === yt[0] ? yt[0] + 1 : yt[yt.length - 1]];
+  const pad = { ...PAD, bottom: 34 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+  const x = (v: number) => pad.left + (innerW * (v - x0)) / (x1 - x0 || 1);
+  const y = (v: number) => pad.top + innerH - (innerH * (v - y0)) / (y1 - y0);
+  return (
+    <figure className="chart" aria-label={label}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+        {yt.map((t) => (
+          <g key={`y${t}`}>
+            <line x1={pad.left} x2={W - pad.right} y1={y(t)} y2={y(t)} className={t === 0 ? 'chart-grid zero' : 'chart-grid'} />
+            <text x={pad.left - 6} y={y(t) + 4} className="chart-axis" textAnchor="end">
+              {t > 0 ? `+${t}` : t}
+            </text>
+          </g>
+        ))}
+        {xt.map((t) => (
+          <text key={`x${t}`} x={x(t)} y={H - 20} className="chart-axis" textAnchor="middle">
+            {compact(t)}
+          </text>
+        ))}
+        <text x={pad.left + innerW / 2} y={H - 4} className="chart-axis" textAnchor="middle">
+          {xLabel} →
+        </text>
+        {points.map((p) => (
+          <circle key={p.label} cx={x(p.x)} cy={y(p.y)} r={5} className="chart-scatter">
+            <title>{`${p.label}: ${p.x} / ${p.y}`}</title>
+          </circle>
+        ))}
+      </svg>
+      <figcaption className="chart-caption">縦軸:{yLabel}・1つの点が1か月</figcaption>
     </figure>
   );
 }
@@ -263,7 +367,7 @@ export function BarChart({ bars, label }: { bars: { label: string; value: number
               <rect x={cx - bw / 2} y={PAD.top + innerH - h} width={bw} height={h} rx={4} className="chart-bar" />
               {b.value > 0 && (
                 <text x={cx} y={PAD.top + innerH - h - 4} className="chart-value" textAnchor="middle">
-                  {b.value}
+                  {compact(b.value)}
                 </text>
               )}
               <text x={cx} y={H - 8} className="chart-axis" textAnchor="middle">

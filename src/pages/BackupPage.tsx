@@ -19,7 +19,7 @@ function backupFileName() {
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export function BackupPage({ restore }: { restore: boolean }) {
-  const { videos, practiceNotes, events, strengthRecords, reload, showToast } = useAppData();
+  const { videos, practiceNotes, events, strengthRecords, bodyRecords, reload, showToast } = useAppData();
   const restoreRef = useRef<HTMLHeadingElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,12 +96,12 @@ export function BackupPage({ restore }: { restore: boolean }) {
       await reload();
       setResultMessage(
         mode === 'replace'
-          ? `復元が完了しました。動画${r.addedVideos}件・練習ノート${r.addedNotes}件・予定${r.addedEvents}件・筋トレのデータ${r.addedStrength}件を読み込みました。`
+          ? `復元が完了しました。動画${r.addedVideos}件・練習ノート${r.addedNotes}件・予定${r.addedEvents}件・筋トレ・体重のデータ${r.addedStrength}件を読み込みました。`
           : `追加が完了しました。動画${r.addedVideos}件を追加${
               r.skippedVideos ? `、登録済みの${r.skippedVideos}件はスキップ` : ''
             }${r.addedCategories ? `、分類・種目を${r.addedCategories}件追加` : ''}、練習ノート${r.addedNotes}件を追加${
               r.skippedNotes ? `、登録済みの${r.skippedNotes}件はスキップ` : ''
-            }、予定${r.addedEvents}件を追加${r.skippedEvents ? `、登録済みの${r.skippedEvents}件はスキップ` : ''}、筋トレのデータ${
+            }、予定${r.addedEvents}件を追加${r.skippedEvents ? `、登録済みの${r.skippedEvents}件はスキップ` : ''}、筋トレ・体重のデータ${
               r.addedStrength
             }件を追加${r.skippedStrength ? `、登録済みの${r.skippedStrength}件はスキップ` : ''}しました。`,
       );
@@ -128,9 +128,9 @@ export function BackupPage({ restore }: { restore: boolean }) {
           <div>
             <h3 className="card-title">JSONファイルに書き出す</h3>
             <p className="card-desc">
-              動画・分類・練習ノート・カレンダー予定・筋トレ(種目・動画・予定・実績)をJSON形式で保存できます。(現在の動画:
+              動画・分類・練習ノート・カレンダー予定・筋トレ(種目・動画・予定・実績)・体重記録をJSON形式で保存できます。(現在の動画:
               {videos.length}件・練習ノート:{practiceNotes.length}件・予定:{events.length}件・筋トレ実績:
-              {strengthRecords.length}件)
+              {strengthRecords.length}件・体重:{bodyRecords.length}件)
             </p>
           </div>
         </div>
@@ -169,7 +169,7 @@ export function BackupPage({ restore }: { restore: boolean }) {
         {parsed && (
           <p className="banner banner-info">
             読み込み可能です:動画{parsed.videos.length}件 / ポジション{parsed.positions.length}件 / 技の種類
-            {parsed.techniqueTypes.length}件 / 練習ノート{parsed.practiceNotes.length}件 / 予定{parsed.events.length}件 / 筋トレ実績{parsed.strengthRecords.length}件
+            {parsed.techniqueTypes.length}件 / 練習ノート{parsed.practiceNotes.length}件 / 予定{parsed.events.length}件 / 筋トレ実績{parsed.strengthRecords.length}件 / 体重{parsed.bodyRecords.length}件
           </p>
         )}
       </section>
@@ -206,8 +206,8 @@ export function BackupPage({ restore }: { restore: boolean }) {
           title={mode === 'replace' ? 'データを置き換えますか?' : 'データを追加しますか?'}
           message={
             mode === 'replace'
-              ? `現在の動画${videos.length}件・練習ノート${practiceNotes.length}件・予定${events.length}件・筋トレ実績${strengthRecords.length}件と分類・種目はすべて削除され、ファイルの内容(動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件・筋トレ実績${parsed.strengthRecords.length}件)に置き換わります。この操作は取り消せません。`
-              : `ファイル内の動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件・筋トレ実績${parsed.strengthRecords.length}件を現在のデータに追加します。`
+              ? `現在の動画${videos.length}件・練習ノート${practiceNotes.length}件・予定${events.length}件・筋トレ実績${strengthRecords.length}件・体重${bodyRecords.length}件と分類・種目はすべて削除され、ファイルの内容(動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件・筋トレ実績${parsed.strengthRecords.length}件・体重${parsed.bodyRecords.length}件)に置き換わります。この操作は取り消せません。`
+              : `ファイル内の動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件・筋トレ実績${parsed.strengthRecords.length}件・体重${parsed.bodyRecords.length}件を現在のデータに追加します。`
           }
           confirmLabel={mode === 'replace' ? '置き換える' : '追加する'}
           danger={mode === 'replace'}

@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { repository } from './storage/repository';
 import {
   EMPTY_FILTER,
+  type BodyRecord,
   type CalendarEvent,
   type Category,
   type Exercise,
@@ -31,6 +32,8 @@ interface AppDataValue {
   strengthVideos: StrengthVideo[];
   strengthPlans: StrengthPlan[];
   strengthRecords: StrengthRecord[];
+  /** 体重記録(新しい順) */
+  bodyRecords: BodyRecord[];
   /** 全動画で使われているタグ(使用回数の多い順) */
   allTags: string[];
   reload: () => Promise<void>;
@@ -55,14 +58,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     strengthVideos: StrengthVideo[];
     strengthPlans: StrengthPlan[];
     strengthRecords: StrengthRecord[];
-  }>({ exercises: [], strengthVideos: [], strengthPlans: [], strengthRecords: [] });
+    bodyRecords: BodyRecord[];
+  }>({ exercises: [], strengthVideos: [], strengthPlans: [], strengthRecords: [], bodyRecords: [] });
   const [filter, setFilter] = useState<VideoFilter>(EMPTY_FILTER);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 
   const reload = useCallback(async () => {
     try {
-      const [v, p, t, n, e, ex, sv, sp, sr] = await Promise.all([
+      const [v, p, t, n, e, ex, sv, sp, sr, br] = await Promise.all([
         repository.listVideos(),
         repository.listCategories('positions'),
         repository.listCategories('techniqueTypes'),
@@ -72,13 +76,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         repository.listStrengthVideos(),
         repository.listStrengthPlans(),
         repository.listStrengthRecords(),
+        repository.listBodyRecords(),
       ]);
       setVideos(v);
       setPositions(p);
       setTechniqueTypes(t);
       setPracticeNotes(n);
       setEvents(e);
-      setStrength({ exercises: ex, strengthVideos: sv, strengthPlans: sp, strengthRecords: sr });
+      setStrength({ exercises: ex, strengthVideos: sv, strengthPlans: sp, strengthRecords: sr, bodyRecords: br });
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'データの読み込みに失敗しました。');

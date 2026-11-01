@@ -2739,6 +2739,36 @@ button.setting-row:active {
   stroke-linecap: round;
 }
 
+.chart-line.faint {
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+.chart-trend {
+  fill: none;
+  stroke: #9cc4ff;
+  stroke-width: 2.5;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+}
+
+.chart-trend-mark {
+  display: inline-block;
+  width: 14px;
+  border-top: 2.5px dashed #9cc4ff;
+}
+
+.chart-grid.zero {
+  stroke: var(--text-muted);
+}
+
+.chart-scatter {
+  fill: var(--strength);
+  fill-opacity: 0.75;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
 .chart-dot {
   fill: var(--surface);
   stroke: var(--strength);
@@ -2791,6 +2821,169 @@ button.setting-row:active {
   flex: 0 0 auto;
 }
 
+/* ---------- 体重・相関分析 ---------- */
+.body-input {
+  margin-bottom: 8px;
+}
+
+.body-input-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.body-input-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.body-num-row .num-input {
+  min-height: 56px;
+  font-size: 22px;
+}
+
+.body-details {
+  margin-top: 12px;
+}
+
+.body-save {
+  margin-top: 12px;
+}
+
+.body-summary {
+  font-size: 13px;
+  color: var(--text-sub);
+  margin: 8px 0 4px;
+  line-height: 1.6;
+}
+
+.body-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.body-day {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.body-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 4px;
+}
+
+.body-day-date {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.body-day-avg {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.body-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  text-align: left;
+  border-top: 1px solid var(--border);
+}
+
+.body-row:first-of-type {
+  border-top: none;
+}
+
+.body-time {
+  width: 44px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.body-weight {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.body-fat {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.body-memo {
+  flex-basis: 100%;
+  padding-left: 56px;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caveat {
+  margin-top: 0;
+}
+
+.corr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.corr-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.corr-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.corr-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.corr-r {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--strength);
+  white-space: nowrap;
+}
+
+.corr-card.insufficient .corr-r,
+.corr-card.flat .corr-r {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.corr-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-sub);
+}
+
+.corr-help {
+  margin-top: 16px;
+  line-height: 1.7;
+}
+
 /* 幅の狭いiPhone(SEなど)向けの調整 */
 @media (max-width: 350px) {
   .filter-bar {
@@ -2826,6 +3019,6 @@ button.setting-row:active {
     padding-right: 30px;
   }
   .segmented-item {
-    font-size: 13px;
+    font-size: 12px;
   }
 }

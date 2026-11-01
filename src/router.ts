@@ -26,10 +26,11 @@ export type Route =
   | { name: 'planForm'; id: string | null; date: string | null }
   | { name: 'planDetail'; id: string }
   | { name: 'recordForm'; id: string | null; date: string | null; planId: string | null }
-  | { name: 'recordDetail'; id: string };
+  | { name: 'recordDetail'; id: string }
+  | { name: 'bodyEdit'; id: string };
 
-/** 筋トレ画面の上部タブ。log: 記録 / stats: 分析 / videos: 動画 / exercises: 種目 */
-export type StrengthTab = 'log' | 'stats' | 'videos' | 'exercises';
+/** 筋トレ画面の上部タブ。log: 記録 / body: 体重 / stats: 分析 / videos: 動画 / exercises: 種目 */
+export type StrengthTab = 'log' | 'body' | 'stats' | 'videos' | 'exercises';
 
 export function parseRoute(hash: string): Route {
   // 「#/notes/new?date=2026-11-14」のように、? 以降に追加の指定を付けられます
@@ -77,7 +78,8 @@ function parseStrength(b: string | undefined, c: string | undefined, d: string |
     if (isNew) return { name: 'recordForm', id: null, date: query.get('date'), planId: query.get('plan') };
     return d === 'edit' ? { name: 'recordForm', id: c, date: null, planId: null } : { name: 'recordDetail', id: c };
   }
-  const tab: StrengthTab = b === 'stats' || b === 'videos' || b === 'exercises' ? b : 'log';
+  if (b === 'body' && c) return { name: 'bodyEdit', id: c };
+  const tab: StrengthTab = b === 'body' || b === 'stats' || b === 'videos' || b === 'exercises' ? b : 'log';
   return { name: 'strength', tab, exerciseId: query.get('exercise') };
 }
 
