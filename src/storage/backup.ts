@@ -1,13 +1,14 @@
 // バックアップ(JSON)の形式と、読み込んだファイルの検証処理です。
 // 検証はデータベースに書き込む前に全て終わらせるので、不正なファイルで既存データが壊れることはありません。
 
-import type { Category, PracticeNote, Video } from '../types';
+import type { CalendarEvent, Category, PracticeNote, Video } from '../types';
+import { isEventType, isTimeString, validateEventDates } from '../utils/calendar';
 import { isDateOnly, isPracticeResult, parsePracticeCount } from '../utils/practice';
 import { isAllowedVideoUrl } from '../utils/url';
 
 export const BACKUP_APP_ID = 'bjj-video-manager';
-/** 1: 動画・分類 / 2: 練習ノートを追加(バージョン1のファイルも引き続き読み込めます) */
-export const BACKUP_VERSION = 2;
+/** 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加(古いバージョンのファイルも引き続き読み込めます) */
+export const BACKUP_VERSION = 3;
 
 export interface BackupData {
   app: typeof BACKUP_APP_ID;
@@ -17,6 +18,7 @@ export interface BackupData {
   techniqueTypes: Category[];
   videos: Video[];
   practiceNotes: PracticeNote[];
+  events: CalendarEvent[];
 }
 
 /** replace: 既存データを置き換える / merge: 既存データに追加する */
@@ -28,6 +30,8 @@ export interface ImportResult {
   addedCategories: number;
   addedNotes: number;
   skippedNotes: number;
+  addedEvents: number;
+  skippedEvents: number;
 }
 
 export class BackupValidationError extends Error {}
@@ -134,6 +138,46 @@ function validatePracticeNotes(value: unknown): PracticeNote[] {
   });
 }
 
+function validateEvents(value: unknown): CalendarEvent[] {
+  // バージョン2以前のファイルには予定がないので、空として扱います
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new BackupValidationError('予定の一覧の形式が正しくありません。');
+  const ids = new Set<string>();
+  const optionalText = (v: unknown) => (typeof v === 'string' ? v : '');
+  return value.map((item, i) => {
+    const where = `予定の${i + 1}件目`;
+    if (!isObject(item)) throw new BackupValidationError(`${where}の形式が正しくありません。`);
+    const e = item;
+    if (typeof e.id !== 'string' || e.id === '') throw new BackupValidationError(`${where}のIDが正しくありません。`);
+    if (ids.has(e.id)) throw new BackupValidationError(`${where}のIDが重複しています。`);
+    ids.add(e.id);
+    if (typeof e.title !== 'string' || e.title.trim() === '')
+      throw new BackupValidationError(`${where}のタイトルが空です。`);
+    if (!isEventType(e.type)) throw new BackupValidationError(`${where}の種類が正しくありません。`);
+    const dates = {
+      startDate: typeof e.startDate === 'string' ? e.startDate : '',
+      endDate: typeof e.endDate === 'string' && e.endDate !== '' ? e.endDate : null,
+      startTime: isTimeString(e.startTime) ? e.startTime : null,
+      endTime: isTimeString(e.endTime) ? e.endTime : null,
+    };
+    const dateError = validateEventDates(dates);
+    if (dateError) throw new BackupValidationError(`${where}:${dateError}`);
+    if (!isDateString(e.createdAt) || !isDateString(e.updatedAt))
+      throw new BackupValidationError(`${where}の日時が正しくありません。`);
+    return {
+      id: e.id,
+      title: e.title.trim(),
+      type: e.type,
+      ...dates,
+      endDate: dates.endDate === dates.startDate ? null : dates.endDate,
+      location: optionalText(e.location),
+      description: optionalText(e.description),
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    };
+  });
+}
+
 /** JSON文字列を解析・検証し、問題なければ BackupData を返します。問題があれば日本語のエラーを投げます */
 export function parseBackup(text: string): BackupData {
   let json: unknown;
@@ -154,6 +198,7 @@ export function parseBackup(text: string): BackupData {
     new Set(techniqueTypes.map((c) => c.id)),
   );
   const practiceNotes = validatePracticeNotes(json.practiceNotes);
+  const events = validateEvents(json.events);
   return {
     app: BACKUP_APP_ID,
     version: json.version,
@@ -162,5 +207,6 @@ export function parseBackup(text: string): BackupData {
     techniqueTypes,
     videos,
     practiceNotes,
+    events,
   };
 }

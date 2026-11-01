@@ -5,8 +5,8 @@ import { useAppData } from '../AppData';
 import { NoteIcon, PencilIcon, PlusIcon } from '../components/Icons';
 import { BottomNav, PageHeader } from '../components/Layout';
 import { RelatedVideo, ResultBadge } from '../components/Practice';
-import { navigate } from '../router';
-import { listNewDrafts } from '../storage/practiceDraft';
+import { navigate, newNotePath } from '../router';
+import { listNewDrafts, parseNewDraftKey } from '../storage/practiceDraft';
 import { formatPracticeDate } from '../utils/practice';
 
 export function PracticeListPage() {
@@ -26,13 +26,13 @@ export function PracticeListPage() {
       {drafts.length > 0 && (
         <section className="draft-list" aria-label="書きかけのノート">
           {drafts.map((d) => {
-            const videoId = d.key.slice('new:'.length);
+            const { videoId, date } = parseNewDraftKey(d.key);
             return (
               <button
                 key={d.key}
                 type="button"
                 className="draft-card"
-                onClick={() => navigate(videoId ? `/notes/new/${encodeURIComponent(videoId)}` : '/notes/new')}
+                onClick={() => navigate(newNotePath(videoId, date))}
               >
                 <PencilIcon size={18} />
                 <span className="draft-card-body">

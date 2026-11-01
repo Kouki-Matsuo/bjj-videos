@@ -1,6 +1,16 @@
 // DataRepository の IndexedDB 版の実装です。
 
-import type { Category, CategoryKind, PracticeNote, PracticeNoteInput, Video, VideoInput } from '../types';
+import type {
+  CalendarEvent,
+  CalendarEventInput,
+  Category,
+  CategoryKind,
+  PracticeNote,
+  PracticeNoteInput,
+  Video,
+  VideoInput,
+} from '../types';
+import { eventTypeLabel, validateEventDates } from '../utils/calendar';
 import { createId } from '../utils/id';
 import { isDateOnly, parsePracticeCount, sortPracticeNotes } from '../utils/practice';
 import { BACKUP_APP_ID, BACKUP_VERSION, type BackupData, type ImportResult } from './backup';
@@ -52,6 +62,25 @@ function normalizeNoteInput(input: PracticeNoteInput): PracticeNoteInput {
     practiceCount: parsePracticeCount(input.practiceCount),
   };
 }
+
+function normalizeEventInput(input: CalendarEventInput): CalendarEventInput {
+  const normalized: CalendarEventInput = {
+    ...input,
+    // タイトルが空欄なら種類名(例:「練習」)を使います
+    title: input.title.trim() || eventTypeLabel(input.type),
+    endDate: input.endDate && input.endDate !== input.startDate ? input.endDate : null,
+    startTime: input.startTime || null,
+    endTime: input.endTime || null,
+    location: input.location.trim(),
+    description: input.description.trim(),
+  };
+  const error = validateEventDates(normalized);
+  if (error) throw new Error(error);
+  return normalized;
+}
+
+const byStartDate = (a: CalendarEvent, b: CalendarEvent) =>
+  a.startDate.localeCompare(b.startDate) || (a.startTime ?? '').localeCompare(b.startTime ?? '');
 
 async function listCategories(kind: CategoryKind): Promise<Category[]> {
   return (await getAll<Category>(STORES[kind])).sort(byOrder);
@@ -133,6 +162,32 @@ export const indexedDbRepository: DataRepository = {
     await transactionDone(tx);
   },
 
+  async listEvents() {
+    return (await getAll<CalendarEvent>(STORES.events)).sort(byStartDate);
+  },
+
+  async createEvent(input) {
+    const now = new Date().toISOString();
+    const event: CalendarEvent = { ...normalizeEventInput(input), id: createId(), createdAt: now, updatedAt: now };
+    await putAll(STORES.events, [event]);
+    return event;
+  },
+
+  async updateEvent(id, input) {
+    const current = await getOne<CalendarEvent>(STORES.events, id);
+    if (!current) throw new Error('編集対象の予定が見つかりません。削除された可能性があります。');
+    const event: CalendarEvent = { ...current, ...normalizeEventInput(input), updatedAt: new Date().toISOString() };
+    await putAll(STORES.events, [event]);
+    return event;
+  },
+
+  async deleteEvent(id) {
+    const db = await openDb();
+    const tx = db.transaction(STORES.events, 'readwrite');
+    tx.objectStore(STORES.events).delete(id);
+    await transactionDone(tx);
+  },
+
   listCategories,
 
   async addCategory(kind, name) {
@@ -198,11 +253,12 @@ export const indexedDbRepository: DataRepository = {
   },
 
   async exportAll() {
-    const [videos, positions, techniqueTypes, practiceNotes] = await Promise.all([
+    const [videos, positions, techniqueTypes, practiceNotes, events] = await Promise.all([
       getAll<Video>(STORES.videos),
       listCategories('positions'),
       listCategories('techniqueTypes'),
       getAll<PracticeNote>(STORES.practiceNotes),
+      getAll<CalendarEvent>(STORES.events),
     ]);
     return {
       app: BACKUP_APP_ID,
@@ -212,12 +268,13 @@ export const indexedDbRepository: DataRepository = {
       techniqueTypes,
       videos,
       practiceNotes: sortPracticeNotes(practiceNotes),
+      events: events.sort(byStartDate),
     } satisfies BackupData;
   },
 
   async importBackup(data, mode) {
     const db = await openDb();
-    const allStores = [STORES.videos, STORES.positions, STORES.techniqueTypes, STORES.practiceNotes];
+    const allStores = [STORES.videos, STORES.positions, STORES.techniqueTypes, STORES.practiceNotes, STORES.events];
 
     if (mode === 'replace') {
       // 削除と書き込みを1つのトランザクションで行うので、失敗したら元のデータのまま残ります
@@ -227,6 +284,7 @@ export const indexedDbRepository: DataRepository = {
       data.techniqueTypes.forEach((c) => tx.objectStore(STORES.techniqueTypes).put(c));
       data.videos.forEach((v) => tx.objectStore(STORES.videos).put(v));
       data.practiceNotes.forEach((n) => tx.objectStore(STORES.practiceNotes).put(n));
+      data.events.forEach((e) => tx.objectStore(STORES.events).put(e));
       await transactionDone(tx);
       return {
         addedVideos: data.videos.length,
@@ -234,15 +292,18 @@ export const indexedDbRepository: DataRepository = {
         addedCategories: data.positions.length + data.techniqueTypes.length,
         addedNotes: data.practiceNotes.length,
         skippedNotes: 0,
+        addedEvents: data.events.length,
+        skippedEvents: 0,
       };
     }
 
     // 追加モード: 先に既存データを読み、書き込み内容を全て決めてから1回で保存します
-    const [videos, positions, types, notes] = await Promise.all([
+    const [videos, positions, types, notes, events] = await Promise.all([
       getAll<Video>(STORES.videos),
       listCategories('positions'),
       listCategories('techniqueTypes'),
       getAll<PracticeNote>(STORES.practiceNotes),
+      getAll<CalendarEvent>(STORES.events),
     ]);
     const result: ImportResult = {
       addedVideos: 0,
@@ -250,6 +311,8 @@ export const indexedDbRepository: DataRepository = {
       addedCategories: 0,
       addedNotes: 0,
       skippedNotes: 0,
+      addedEvents: 0,
+      skippedEvents: 0,
     };
 
     // ファイル内の分類IDを、既存の分類ID(同じIDか同じ名前)または新規分類に対応付けます
@@ -301,11 +364,22 @@ export const indexedDbRepository: DataRepository = {
       return true;
     });
 
+    const existingEventIds = new Set(events.map((e) => e.id));
+    const newEvents = data.events.filter((e) => {
+      if (existingEventIds.has(e.id)) {
+        result.skippedEvents++;
+        return false;
+      }
+      result.addedEvents++;
+      return true;
+    });
+
     const tx = db.transaction(allStores, 'readwrite');
     pos.toAdd.forEach((c) => tx.objectStore(STORES.positions).put(c));
     typ.toAdd.forEach((c) => tx.objectStore(STORES.techniqueTypes).put(c));
     newVideos.forEach((v) => tx.objectStore(STORES.videos).put(v));
     newNotes.forEach((n) => tx.objectStore(STORES.practiceNotes).put(n));
+    newEvents.forEach((e) => tx.objectStore(STORES.events).put(e));
     await transactionDone(tx);
     return result;
   },

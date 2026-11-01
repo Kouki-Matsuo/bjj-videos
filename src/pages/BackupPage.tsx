@@ -19,7 +19,7 @@ function backupFileName() {
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export function BackupPage({ restore }: { restore: boolean }) {
-  const { videos, practiceNotes, reload, showToast } = useAppData();
+  const { videos, practiceNotes, events, reload, showToast } = useAppData();
   const restoreRef = useRef<HTMLHeadingElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +53,9 @@ export function BackupPage({ restore }: { restore: boolean }) {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      showToast(`バックアップを作成しました(動画${data.videos.length}件・練習ノート${data.practiceNotes.length}件)`);
+      showToast(
+        `バックアップを作成しました(動画${data.videos.length}件・練習ノート${data.practiceNotes.length}件・予定${data.events.length}件)`,
+      );
     } catch (e) {
       setExportError(`バックアップの作成に失敗しました。${e instanceof Error ? e.message : ''}`);
     } finally {
@@ -94,12 +96,12 @@ export function BackupPage({ restore }: { restore: boolean }) {
       await reload();
       setResultMessage(
         mode === 'replace'
-          ? `復元が完了しました。動画${r.addedVideos}件・練習ノート${r.addedNotes}件を読み込みました。`
+          ? `復元が完了しました。動画${r.addedVideos}件・練習ノート${r.addedNotes}件・予定${r.addedEvents}件を読み込みました。`
           : `追加が完了しました。動画${r.addedVideos}件を追加${
               r.skippedVideos ? `、登録済みの${r.skippedVideos}件はスキップ` : ''
             }${r.addedCategories ? `、分類を${r.addedCategories}件追加` : ''}、練習ノート${r.addedNotes}件を追加${
               r.skippedNotes ? `、登録済みの${r.skippedNotes}件はスキップ` : ''
-            }しました。`,
+            }、予定${r.addedEvents}件を追加${r.skippedEvents ? `、登録済みの${r.skippedEvents}件はスキップ` : ''}しました。`,
       );
       setParsed(null);
       setFileName(null);
@@ -124,8 +126,8 @@ export function BackupPage({ restore }: { restore: boolean }) {
           <div>
             <h3 className="card-title">JSONファイルに書き出す</h3>
             <p className="card-desc">
-              動画・分類・練習ノートをJSON形式で保存できます。(現在の動画:{videos.length}件・練習ノート:
-              {practiceNotes.length}件)
+              動画・分類・練習ノート・カレンダー予定をJSON形式で保存できます。(現在の動画:{videos.length}
+              件・練習ノート:{practiceNotes.length}件・予定:{events.length}件)
             </p>
           </div>
         </div>
@@ -164,7 +166,7 @@ export function BackupPage({ restore }: { restore: boolean }) {
         {parsed && (
           <p className="banner banner-info">
             読み込み可能です:動画{parsed.videos.length}件 / ポジション{parsed.positions.length}件 / 技の種類
-            {parsed.techniqueTypes.length}件 / 練習ノート{parsed.practiceNotes.length}件
+            {parsed.techniqueTypes.length}件 / 練習ノート{parsed.practiceNotes.length}件 / 予定{parsed.events.length}件
           </p>
         )}
       </section>
@@ -183,7 +185,7 @@ export function BackupPage({ restore }: { restore: boolean }) {
       <p className="hint">
         {mode === 'replace'
           ? '今あるデータをすべて削除し、ファイルの内容に入れ替えます。'
-          : '今あるデータを残したまま、ファイル内の動画と練習ノートを追加します。同じもの(同じID)はスキップします。'}
+          : '今あるデータを残したまま、ファイル内の動画・練習ノート・予定を追加します。同じもの(同じID)はスキップします。'}
       </p>
 
       <button
@@ -201,8 +203,8 @@ export function BackupPage({ restore }: { restore: boolean }) {
           title={mode === 'replace' ? 'データを置き換えますか?' : 'データを追加しますか?'}
           message={
             mode === 'replace'
-              ? `現在の動画${videos.length}件・練習ノート${practiceNotes.length}件と分類はすべて削除され、ファイルの内容(動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件)に置き換わります。この操作は取り消せません。`
-              : `ファイル内の動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件を現在のデータに追加します。`
+              ? `現在の動画${videos.length}件・練習ノート${practiceNotes.length}件・予定${events.length}件と分類はすべて削除され、ファイルの内容(動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件)に置き換わります。この操作は取り消せません。`
+              : `ファイル内の動画${parsed.videos.length}件・練習ノート${parsed.practiceNotes.length}件・予定${parsed.events.length}件を現在のデータに追加します。`
           }
           confirmLabel={mode === 'replace' ? '置き換える' : '追加する'}
           danger={mode === 'replace'}

@@ -7,7 +7,7 @@ import { ChevronRightIcon, DownloadIcon, ShieldIcon, TagIcon, TypeIcon, UploadIc
 import { BottomNav, PageHeader } from '../components/Layout';
 import { navigate } from '../router';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 function SettingRow({ icon, title, sub, onClick }: { icon?: ReactNode; title: string; sub?: string; onClick: () => void }) {
   return (

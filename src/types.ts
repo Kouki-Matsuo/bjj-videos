@@ -74,3 +74,26 @@ export interface PracticeNote {
 }
 
 export type PracticeNoteInput = Omit<PracticeNote, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** カレンダー予定の種類。practice: 練習 / match: 試合 / seminar: セミナー / visit: 出稽古 / other: その他 */
+export type EventType = 'practice' | 'match' | 'seminar' | 'visit' | 'other';
+
+/** カレンダーの予定1件分のデータ(練習の「予定」。実際の練習記録は PracticeNote) */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: EventType;
+  /** 開始日(YYYY-MM-DD) */
+  startDate: string;
+  /** 終了日(YYYY-MM-DD)。1日だけの予定なら null */
+  endDate: string | null;
+  /** 開始時刻(HH:MM)。終日なら null */
+  startTime: string | null;
+  endTime: string | null;
+  location: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CalendarEventInput = Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>;

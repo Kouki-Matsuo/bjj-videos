@@ -5,14 +5,15 @@ import type { Category } from '../types';
 import { createId } from '../utils/id';
 
 const DB_NAME = 'bjj-video-manager';
-// 1: 動画・分類 / 2: 練習ノートを追加
-const DB_VERSION = 2;
+// 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加
+const DB_VERSION = 3;
 
 export const STORES = {
   videos: 'videos',
   positions: 'positions',
   techniqueTypes: 'techniqueTypes',
   practiceNotes: 'practiceNotes',
+  events: 'events',
 } as const;
 
 const DEFAULT_POSITIONS = [
@@ -75,6 +76,10 @@ export function openDb(): Promise<IDBDatabase> {
       if (event.oldVersion < 2) {
         const notes = db.createObjectStore(STORES.practiceNotes, { keyPath: 'id' });
         notes.createIndex('videoId', 'videoId');
+      }
+      if (event.oldVersion < 3) {
+        const events = db.createObjectStore(STORES.events, { keyPath: 'id' });
+        events.createIndex('startDate', 'startDate');
       }
     };
     req.onsuccess = () => {

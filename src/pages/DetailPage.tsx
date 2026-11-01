@@ -7,7 +7,7 @@ import { ExternalIcon, HeartIcon, PencilIcon, PlusIcon, TrashIcon, VideoIcon } f
 import { PageHeader } from '../components/Layout';
 import { ResultBadge } from '../components/Practice';
 import { Thumbnail } from '../components/Thumbnail';
-import { navigate } from '../router';
+import { navigate, newNotePath } from '../router';
 import { repository } from '../storage/repository';
 import { formatDateTime } from '../utils/format';
 import { formatPracticeDate } from '../utils/practice';
@@ -171,7 +171,7 @@ export function DetailPage({ videoId }: { videoId: string }) {
       <button
         type="button"
         className="btn btn-secondary btn-block history-add"
-        onClick={() => navigate(`/notes/new/${encodeURIComponent(video.id)}`)}
+        onClick={() => navigate(newNotePath(video.id))}
       >
         <PlusIcon size={18} /> この動画で練習ノートを作成
       </button>

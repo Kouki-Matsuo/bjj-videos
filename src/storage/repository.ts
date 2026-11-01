@@ -2,7 +2,16 @@
 // 画面はこの DataRepository の関数だけを使います。将来クラウド保存に切り替えるときは、
 // 同じ関数を持つ別の実装(例: cloudRepository.ts)を作り、下の `repository` を差し替えるだけで済みます。
 
-import type { Category, CategoryKind, PracticeNote, PracticeNoteInput, Video, VideoInput } from '../types';
+import type {
+  CalendarEvent,
+  CalendarEventInput,
+  Category,
+  CategoryKind,
+  PracticeNote,
+  PracticeNoteInput,
+  Video,
+  VideoInput,
+} from '../types';
 import type { BackupData, ImportMode, ImportResult } from './backup';
 import { indexedDbRepository } from './indexedDbRepository';
 
@@ -20,6 +29,12 @@ export interface DataRepository {
   createPracticeNote(input: PracticeNoteInput): Promise<PracticeNote>;
   updatePracticeNote(id: string, input: PracticeNoteInput): Promise<PracticeNote>;
   deletePracticeNote(id: string): Promise<void>;
+
+  /** カレンダー予定の一覧(開始日の順) */
+  listEvents(): Promise<CalendarEvent[]>;
+  createEvent(input: CalendarEventInput): Promise<CalendarEvent>;
+  updateEvent(id: string, input: CalendarEventInput): Promise<CalendarEvent>;
+  deleteEvent(id: string): Promise<void>;
 
   listCategories(kind: CategoryKind): Promise<Category[]>;
   addCategory(kind: CategoryKind, name: string): Promise<Category>;

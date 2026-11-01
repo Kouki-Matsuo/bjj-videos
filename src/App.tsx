@@ -2,8 +2,10 @@
 
 import { useAppData } from './AppData';
 import { BackupPage } from './pages/BackupPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { CategoryManagePage } from './pages/CategoryManagePage';
 import { DetailPage } from './pages/DetailPage';
+import { EventFormPage } from './pages/EventFormPage';
 import { ListPage } from './pages/ListPage';
 import { PracticeListPage } from './pages/PracticeListPage';
 import { PracticeNoteDetailPage } from './pages/PracticeNoteDetailPage';
@@ -44,13 +46,28 @@ export function App() {
       page = <PracticeListPage />;
       break;
     case 'noteNew':
-      page = <PracticeNoteFormPage key={`note-new-${route.videoId ?? ''}`} initialVideoId={route.videoId} />;
+      page = (
+        <PracticeNoteFormPage
+          key={`note-new-${route.videoId ?? ''}-${route.date ?? ''}`}
+          initialVideoId={route.videoId}
+          initialDate={route.date}
+        />
+      );
       break;
     case 'noteDetail':
       page = <PracticeNoteDetailPage noteId={route.id} />;
       break;
     case 'noteEdit':
       page = <PracticeNoteFormPage key={`note-edit-${route.id}`} noteId={route.id} />;
+      break;
+    case 'calendar':
+      page = <CalendarPage date={route.date} />;
+      break;
+    case 'eventNew':
+      page = <EventFormPage key={`event-new-${route.date ?? ''}`} initialDate={route.date} />;
+      break;
+    case 'eventEdit':
+      page = <EventFormPage key={`event-edit-${route.id}`} eventId={route.id} />;
       break;
     default:
       page = <ListPage />;

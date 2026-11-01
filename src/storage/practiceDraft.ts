@@ -7,8 +7,15 @@ import { isDateOnly, isPracticeResult, parsePracticeCount } from '../utils/pract
 
 const PREFIX = 'bjj-practice-draft:';
 
-/** 下書きの保存場所の名前。新規は「new:動画ID」、編集は「edit:ノートID」 */
-export const newDraftKey = (videoId: string | null) => `new:${videoId ?? ''}`;
+/** 下書きの保存場所の名前。新規は「new:動画ID」(カレンダーから日付指定で開いたときは「new:動画ID:日付」)、編集は「edit:ノートID」 */
+export const newDraftKey = (videoId: string | null, date: string | null = null) =>
+  `new:${videoId ?? ''}${date ? `:${date}` : ''}`;
+
+/** 新規の下書きの名前から、作成画面を開いたときの動画ID・日付を取り出します */
+export function parseNewDraftKey(key: string): { videoId: string | null; date: string | null } {
+  const [videoId = '', date = ''] = key.replace(/^new:/, '').split(':');
+  return { videoId: videoId || null, date: date || null };
+}
 export const editDraftKey = (noteId: string) => `edit:${noteId}`;
 
 export interface PracticeDraft {

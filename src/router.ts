@@ -13,22 +13,33 @@ export type Route =
   | { name: 'tags' }
   | { name: 'backup'; restore: boolean }
   | { name: 'notes' }
-  | { name: 'noteNew'; videoId: string | null }
+  | { name: 'noteNew'; videoId: string | null; date: string | null }
   | { name: 'noteDetail'; id: string }
-  | { name: 'noteEdit'; id: string };
+  | { name: 'noteEdit'; id: string }
+  | { name: 'calendar'; date: string | null }
+  | { name: 'eventNew'; date: string | null }
+  | { name: 'eventEdit'; id: string };
 
 export function parseRoute(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  // 「#/notes/new?date=2026-11-14」のように、? 以降に追加の指定を付けられます
+  const [path, queryString = ''] = hash.replace(/^#\/?/, '').split('?');
+  const query = new URLSearchParams(queryString);
+  const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   const [a, b, c] = parts;
   if (a === 'new') return { name: 'new' };
   if (a === 'videos' && b && c === 'edit') return { name: 'edit', id: b };
   if (a === 'videos' && b) return { name: 'detail', id: b };
   if (a === 'notes') {
     // #/notes/new または #/notes/new/動画ID(動画詳細から作成したとき)
-    if (b === 'new') return { name: 'noteNew', videoId: c ?? null };
+    if (b === 'new') return { name: 'noteNew', videoId: c ?? null, date: query.get('date') };
     if (b && c === 'edit') return { name: 'noteEdit', id: b };
     if (b) return { name: 'noteDetail', id: b };
     return { name: 'notes' };
+  }
+  if (a === 'calendar') return { name: 'calendar', date: b ?? null };
+  if (a === 'events') {
+    if (b === 'new') return { name: 'eventNew', date: query.get('date') };
+    if (b) return { name: 'eventEdit', id: b };
   }
   if (a === 'settings') {
     if (b === 'positions' || b === 'techniqueTypes') return { name: 'categories', kind: b };
@@ -37,6 +48,12 @@ export function parseRoute(hash: string): Route {
     return { name: 'settings' };
   }
   return { name: 'list' };
+}
+
+/** 練習ノート作成画面のパス。動画詳細やカレンダーから、動画・練習日を指定して開けます */
+export function newNotePath(videoId: string | null = null, date: string | null = null): string {
+  const base = videoId ? `/notes/new/${encodeURIComponent(videoId)}` : '/notes/new';
+  return date ? `${base}?date=${date}` : base;
 }
 
 // 履歴ごとに「アプリ内で何画面進んだか」を記録します。

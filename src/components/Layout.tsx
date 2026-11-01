@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { goBack, navigate } from '../router';
-import { ChevronLeftIcon, GearIcon, HomeIcon, NoteIcon, PlusCircleIcon } from './Icons';
+import { CalendarIcon, ChevronLeftIcon, GearIcon, HomeIcon, NoteIcon, PlusCircleIcon } from './Icons';
 
 interface HeaderProps {
   title: string;
@@ -32,12 +32,13 @@ export function PageHeader({ title, backTo, onBack, right }: HeaderProps) {
   );
 }
 
-type Tab = 'list' | 'new' | 'notes' | 'settings';
+type Tab = 'list' | 'new' | 'calendar' | 'notes' | 'settings';
 
 export function BottomNav({ active }: { active: Tab }) {
   const items: { tab: Tab; label: string; path: string; icon: ReactNode }[] = [
     { tab: 'list', label: '一覧', path: '/', icon: <HomeIcon size={22} filled={active === 'list'} /> },
     { tab: 'new', label: '登録', path: '/new', icon: <PlusCircleIcon size={22} /> },
+    { tab: 'calendar', label: 'カレンダー', path: '/calendar', icon: <CalendarIcon size={22} /> },
     { tab: 'notes', label: '練習ノート', path: '/notes', icon: <NoteIcon size={22} /> },
     { tab: 'settings', label: '設定', path: '/settings', icon: <GearIcon size={22} /> },
   ];

@@ -21,6 +21,8 @@ interface Props {
   noteId?: string;
   /** 動画詳細から作成したときの動画ID */
   initialVideoId?: string | null;
+  /** カレンダーから作成したときの練習日 */
+  initialDate?: string | null;
 }
 
 interface FormState {
@@ -51,8 +53,8 @@ const toInput = (f: FormState): PracticeNoteInput => ({
   practiceCount: parsePracticeCount(f.practiceCount),
 });
 
-const newForm = (videoId: string | null): FormState => ({
-  practiceDate: todayString(),
+const newForm = (videoId: string | null, date: string | null): FormState => ({
+  practiceDate: date ?? todayString(),
   videoId,
   result: 'unrated',
   memo: '',
@@ -60,14 +62,15 @@ const newForm = (videoId: string | null): FormState => ({
   practiceCount: '',
 });
 
-export function PracticeNoteFormPage({ noteId, initialVideoId = null }: Props) {
+export function PracticeNoteFormPage({ noteId, initialVideoId = null, initialDate: dateParam = null }: Props) {
+  const initialDate = isDateOnly(dateParam) ? dateParam : null;
   const { practiceNotes, loading, reload, showToast } = useAppData();
   const isEdit = noteId !== undefined;
   const original: PracticeNote | undefined = isEdit ? practiceNotes.find((n) => n.id === noteId) : undefined;
-  const draftKey = isEdit ? editDraftKey(noteId) : newDraftKey(initialVideoId);
+  const draftKey = isEdit ? editDraftKey(noteId) : newDraftKey(initialVideoId, initialDate);
 
-  const [form, setForm] = useState<FormState>(() => newForm(initialVideoId));
-  const [initial, setInitial] = useState<FormState>(() => newForm(initialVideoId));
+  const [form, setForm] = useState<FormState>(() => newForm(initialVideoId, initialDate));
+  const [initial, setInitial] = useState<FormState>(() => newForm(initialVideoId, initialDate));
   const [ready, setReady] = useState(false);
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
   const [draftFailed, setDraftFailed] = useState(false);
@@ -80,13 +83,13 @@ export function PracticeNoteFormPage({ noteId, initialVideoId = null }: Props) {
   // 最初の内容を決めます(下書きがあればそれを復元)。編集時はノートの読み込みを待ちます
   useEffect(() => {
     if (ready || (isEdit && !original)) return;
-    const base = original ? fromInput(original) : newForm(initialVideoId);
+    const base = original ? fromInput(original) : newForm(initialVideoId, initialDate);
     const draft = loadDraft(draftKey);
     setInitial(base);
     setForm(draft ? fromInput(draft.form) : base);
     setRestoredAt(draft ? draft.savedAt : null);
     setReady(true);
-  }, [ready, isEdit, original, initialVideoId, draftKey]);
+  }, [ready, isEdit, original, initialVideoId, initialDate, draftKey]);
 
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 

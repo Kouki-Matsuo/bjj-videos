@@ -1721,6 +1721,387 @@ button.setting-row:active {
   margin: 8px 0 24px;
 }
 
+/* ---------- カレンダー・予定 ---------- */
+/* 予定の種類ごとの色(練習の「予定」は青、実際の「練習記録」は緑のチェックで区別します) */
+.event-practice {
+  --event-color: #4a9bff;
+}
+
+.event-match {
+  --event-color: #ff9f43;
+}
+
+.event-seminar {
+  --event-color: #b18cff;
+}
+
+.event-visit {
+  --event-color: #2fd0c0;
+}
+
+.event-other {
+  --event-color: #9aa3ae;
+}
+
+.event-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--event-color);
+  flex-shrink: 0;
+}
+
+.record-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--success);
+  color: #06281a;
+  flex-shrink: 0;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+.cal-month {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cal-header .btn-sm {
+  margin-right: 4px;
+}
+
+.cal-next {
+  margin-right: -10px;
+}
+
+.cal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cal-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-sub);
+  padding: 2px 0 4px;
+}
+
+.cal-weekday.sun,
+.cal-cell.sun .cal-day {
+  color: #ff8a8e;
+}
+
+.cal-weekday.sat,
+.cal-cell.sat .cal-day {
+  color: #8fbcff;
+}
+
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 0 4px;
+  background: var(--surface);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+}
+
+.cal-cell.empty {
+  background: transparent;
+}
+
+.cal-cell:active:not(.empty) {
+  background: var(--surface-2);
+}
+
+.cal-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  border-radius: 999px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 今日:日付を青い丸で囲みます */
+.cal-cell.today .cal-day {
+  background: rgba(47, 136, 255, 0.2);
+  color: #9cc4ff;
+}
+
+/* 選択中:枠全体を青にします */
+.cal-cell.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cal-cell.selected .cal-day {
+  color: #fff;
+  background: transparent;
+}
+
+.cal-cell.selected.today .cal-day {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.cal-cell.selected .event-dot {
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+.cal-marks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  min-height: 12px;
+  max-width: 100%;
+  padding: 0 2px;
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.cal-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-legend .event-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.day-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.day-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.today-chip {
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9cc4ff;
+  background: rgba(47, 136, 255, 0.16);
+}
+
+.day-actions {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.day-actions .btn {
+  min-height: 52px;
+}
+
+.day-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+}
+
+.day-empty {
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px 10px 0;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid #1d222a;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.event-item:active {
+  background: var(--surface-2);
+}
+
+.event-bar {
+  align-self: stretch;
+  width: 4px;
+  margin: -10px 0;
+  background: var(--event-color);
+  flex-shrink: 0;
+}
+
+.event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.event-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-type-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--event-color);
+  background: color-mix(in srgb, var(--event-color) 16%, transparent);
+}
+
+.event-period {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.event-title {
+  font-size: 15px;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.event-location,
+.event-desc {
+  font-size: 13px;
+  color: var(--text-sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-card-date svg {
+  vertical-align: -2px;
+  margin-right: 2px;
+}
+
+.type-field {
+  border: none;
+  padding: 0;
+  margin: 0 0 18px;
+  min-width: 0;
+}
+
+.type-field legend {
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 4px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.type-btn .event-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.type-btn.selected {
+  border-color: var(--event-color);
+  color: var(--event-color);
+  background: color-mix(in srgb, var(--event-color) 14%, transparent);
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.field-pair .field {
+  margin-bottom: 12px;
+}
+
+.field-pair .input {
+  min-width: 0;
+}
+
+.field-hint {
+  margin: -4px 0 12px;
+}
+
+.event-delete {
+  margin-top: 16px;
+}
+
 /* 幅の狭いiPhone(SEなど)向けの調整 */
 @media (max-width: 350px) {
   .filter-bar {
@@ -1742,5 +2123,13 @@ button.setting-row:active {
   }
   .nav-item {
     font-size: 10px;
+  }
+  .cal-cell {
+    min-height: 46px;
+    font-size: 14px;
+  }
+  .cal-row,
+  .cal-grid {
+    gap: 3px;
   }
 }

@@ -122,6 +122,12 @@ export const XCircleIcon = (p: IconProps) => (
 export const HelpCircleIcon = (p: IconProps) => (
   <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.5M12 17h.01" /></Svg>
 );
+export const CalendarIcon = (p: IconProps) => (
+  <Svg {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></Svg>
+);
+export const CheckIcon = (p: IconProps) => (
+  <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7.5" /></Svg>
+);
 export const MinusIcon = (p: IconProps) => (
   <Svg {...p}><path d="M5 12h14" /></Svg>
 );

@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../components/Dialog';
 import { ChevronRightIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { PageHeader } from '../components/Layout';
 import { RelatedVideo, ResultBadge, useRelatedVideo } from '../components/Practice';
-import { navigate } from '../router';
+import { goBack, navigate } from '../router';
 import { clearDraft, editDraftKey } from '../storage/practiceDraft';
 import { repository } from '../storage/repository';
 import { formatDateTime } from '../utils/format';
@@ -38,7 +38,7 @@ export function PracticeNoteDetailPage({ noteId }: { noteId: string }) {
       clearDraft(editDraftKey(note.id));
       await reload();
       showToast('練習ノートを削除しました');
-      navigate('/notes', { replace: true });
+      goBack('/notes');
     } catch (e) {
       setError(`削除に失敗しました。${e instanceof Error ? e.message : ''}`);
       setDeleting(false);
