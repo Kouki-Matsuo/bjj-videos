@@ -3,17 +3,25 @@
 import type { CalendarEvent, EventType } from '../types';
 import { isDateOnly } from './practice';
 
+/** 予定の登録時に選べる種類 */
 export const EVENT_TYPES: { value: EventType; label: string }[] = [
   { value: 'practice', label: '練習' },
   { value: 'match', label: '試合' },
-  { value: 'seminar', label: 'セミナー' },
-  { value: 'visit', label: '出稽古' },
+  { value: 'strength', label: '筋トレ' },
   { value: 'other', label: 'その他' },
 ];
 
-export const isEventType = (v: unknown): v is EventType => EVENT_TYPES.some((t) => t.value === v);
+/** 以前の版で選べた種類。新しくは選べませんが、登録済みの予定やバックアップはそのまま表示・復元できます */
+const LEGACY_EVENT_TYPES: { value: EventType; label: string }[] = [
+  { value: 'seminar', label: 'セミナー' },
+  { value: 'visit', label: '出稽古' },
+];
 
-export const eventTypeLabel = (t: EventType) => EVENT_TYPES.find((x) => x.value === t)?.label ?? 'その他';
+export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...LEGACY_EVENT_TYPES];
+
+export const isEventType = (v: unknown): v is EventType => ALL_EVENT_TYPES.some((t) => t.value === v);
+
+export const eventTypeLabel = (t: EventType) => ALL_EVENT_TYPES.find((x) => x.value === t)?.label ?? 'その他';
 
 /** 1つの予定に設定できる最長の日数(誤入力で極端に長い予定になるのを防ぎます) */
 export const MAX_EVENT_DAYS = 366;

@@ -8,7 +8,7 @@ import { PageHeader } from '../components/Layout';
 import { goBack } from '../router';
 import { repository } from '../storage/repository';
 import type { CalendarEvent, CalendarEventInput, EventType } from '../types';
-import { EVENT_TYPES, eventTypeLabel, validateEventDates } from '../utils/calendar';
+import { ALL_EVENT_TYPES, EVENT_TYPES, eventTypeLabel, validateEventDates } from '../utils/calendar';
 import { formatPracticeDate, isDateOnly, todayString } from '../utils/practice';
 
 interface Props {
@@ -93,6 +93,11 @@ export function EventFormPage({ eventId, initialDate }: Props) {
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 
   // 保存・削除後は、その予定の開始日を選んだカレンダーに戻ります
+  // 以前の版の種類(セミナーなど)で登録した予定を編集するときは、その種類も選択肢に残します
+  const typeOptions = EVENT_TYPES.some((t) => t.value === initial.type)
+    ? EVENT_TYPES
+    : [...EVENT_TYPES, ...ALL_EVENT_TYPES.filter((t) => t.value === initial.type)];
+
   const backPath = `/calendar/${(isEdit ? original?.startDate : form.startDate) ?? ''}`;
   const cancel = () => (dirty ? setConfirmDiscard(true) : goBack(backPath));
 
@@ -157,8 +162,8 @@ export function EventFormPage({ eventId, initialDate }: Props) {
       >
         <fieldset className="field type-field">
           <legend className="field-label">種類</legend>
-          <div className="type-grid">
-            {EVENT_TYPES.map((t) => (
+          <div className="type-grid" style={{ gridTemplateColumns: `repeat(${typeOptions.length}, minmax(0, 1fr))` }}>
+            {typeOptions.map((t) => (
               <button
                 key={t.value}
                 type="button"
@@ -180,7 +185,7 @@ export function EventFormPage({ eventId, initialDate }: Props) {
           <input
             id="event-title"
             className="input"
-            placeholder={`例:${form.type === 'match' ? '〇〇オープン' : form.type === 'seminar' ? '〇〇先生セミナー' : '夜クラス'}`}
+            placeholder={`例:${form.type === 'match' ? '〇〇オープン' : form.type === 'strength' ? 'ジムで下半身' : '夜クラス'}`}
             maxLength={60}
             enterKeyHint="next"
             value={form.title}

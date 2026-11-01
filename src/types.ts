@@ -75,8 +75,11 @@ export interface PracticeNote {
 
 export type PracticeNoteInput = Omit<PracticeNote, 'id' | 'createdAt' | 'updatedAt'>;
 
-/** カレンダー予定の種類。practice: 練習 / match: 試合 / seminar: セミナー / visit: 出稽古 / other: その他 */
-export type EventType = 'practice' | 'match' | 'seminar' | 'visit' | 'other';
+/**
+ * カレンダー予定の種類。practice: 練習 / match: 試合 / strength: 筋トレ / other: その他
+ * seminar(セミナー)・visit(出稽古)は以前の版で選べた種類で、登録済みの予定を表示するために残しています
+ */
+export type EventType = 'practice' | 'match' | 'strength' | 'other' | 'seminar' | 'visit';
 
 /** カレンダーの予定1件分のデータ(練習の「予定」。実際の練習記録は PracticeNote) */
 export interface CalendarEvent {

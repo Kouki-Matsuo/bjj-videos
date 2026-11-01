@@ -1739,6 +1739,10 @@ button.setting-row:active {
   --event-color: #2fd0c0;
 }
 
+.event-strength {
+  --event-color: #ff6fae;
+}
+
 .event-other {
   --event-color: #9aa3ae;
 }
@@ -1825,6 +1829,13 @@ button.setting-row:active {
   border: 1.5px solid transparent;
   border-radius: var(--radius-sm);
   font-size: 15px;
+}
+
+.cal-cell {
+  /* ダブルタップで画面が拡大されないようにします */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .cal-cell.empty {
@@ -1927,14 +1938,31 @@ button.setting-row:active {
   background: rgba(47, 136, 255, 0.16);
 }
 
-.day-actions {
-  display: flex;
-  gap: 10px;
-  margin: 12px 0 4px;
+.cal-hint {
+  margin-top: 8px;
 }
 
-.day-actions .btn {
-  min-height: 52px;
+.add-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+}
+
+.add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.add-menu-item:active {
+  background: var(--surface-2);
 }
 
 .day-section-title {
@@ -2050,17 +2078,17 @@ button.setting-row:active {
 
 .type-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .type-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 48px;
-  padding: 0 4px;
+  gap: 5px;
+  min-height: 52px;
+  padding: 0 2px;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);

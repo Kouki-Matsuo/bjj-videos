@@ -1,14 +1,16 @@
 // カレンダー(月表示・選択日の予定と練習ノート)
 // 選んだ日付はURL(#/calendar/2026-11-14)に入れるので、予定やノートの画面から戻っても同じ日が表示されます。
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAppData } from '../AppData';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, NoteIcon, PlusIcon } from '../components/Icons';
+import { Sheet } from '../components/Dialog';
+import { CalendarIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, NoteIcon } from '../components/Icons';
 import { BottomNav, PageHeader } from '../components/Layout';
 import { RelatedVideo, ResultBadge } from '../components/Practice';
 import { navigate, newNotePath } from '../router';
 import type { CalendarEvent, EventType } from '../types';
 import {
+  ALL_EVENT_TYPES,
   EVENT_TYPES,
   eventCoversDate,
   eventTypeLabel,
@@ -51,6 +53,20 @@ export function CalendarPage({ date }: { date: string | null }) {
   );
 
   const select = (d: string) => navigate(`/calendar/${d}`, { replace: true });
+
+  // 同じ日付を素早く2回タップ(ダブルタップ)したら、その日に登録するメニューを開きます
+  const [addFor, setAddFor] = useState<string | null>(null);
+  const lastTap = useRef<{ date: string; time: number } | null>(null);
+  const tapDate = (d: string) => {
+    const now = Date.now();
+    if (lastTap.current?.date === d && now - lastTap.current.time < 400) {
+      lastTap.current = null;
+      setAddFor(d);
+    } else {
+      lastTap.current = { date: d, time: now };
+    }
+    if (d !== selected) select(d);
+  };
 
   // 月を移動したときは、その月に今日があれば今日、なければ1日を選びます
   const moveMonth = (delta: number) => {
@@ -101,7 +117,7 @@ export function CalendarPage({ date }: { date: string | null }) {
                   isSelected={d === selected}
                   types={typesByDate.get(d)}
                   noteCount={noteCountByDate.get(d) ?? 0}
-                  onSelect={() => select(d)}
+                  onSelect={() => tapDate(d)}
                 />
               ) : (
                 <span key={`empty-${i}`} className="cal-cell empty" role="gridcell" />
@@ -126,23 +142,13 @@ export function CalendarPage({ date }: { date: string | null }) {
         </li>
       </ul>
 
+      <p className="hint cal-hint">日付をダブルタップすると、予定・練習ノートを登録できます</p>
+
       <section className="day-panel" aria-label="選択した日の予定と練習記録">
         <h2 className="day-title">
           {formatPracticeDate(selected, true)}
           {selected === today && <span className="today-chip">今日</span>}
         </h2>
-        <div className="day-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => navigate(`/events/new?date=${selected}`)}
-          >
-            <PlusIcon size={18} /> 予定
-          </button>
-          <button type="button" className="btn btn-primary" onClick={() => navigate(newNotePath(null, selected))}>
-            <PlusIcon size={18} /> 練習ノート
-          </button>
-        </div>
 
         <h3 className="day-section-title">予定</h3>
         {dayEvents.length ? (
@@ -186,6 +192,47 @@ export function CalendarPage({ date }: { date: string | null }) {
       </section>
 
       <BottomNav active="calendar" />
+
+      {addFor && (
+        <Sheet title={`${formatPracticeDate(addFor, true)}に登録`} onClose={() => setAddFor(null)}>
+          <div className="add-menu">
+            <button
+              type="button"
+              className="add-menu-item"
+              onClick={() => {
+                setAddFor(null);
+                navigate(`/events/new?date=${addFor}`);
+              }}
+            >
+              <span className="setting-icon">
+                <CalendarIcon />
+              </span>
+              <span className="setting-text">
+                <span className="setting-title">予定を登録</span>
+                <span className="setting-sub">練習・試合・筋トレなどの予定</span>
+              </span>
+              <ChevronRightIcon size={18} className="setting-chevron" />
+            </button>
+            <button
+              type="button"
+              className="add-menu-item"
+              onClick={() => {
+                setAddFor(null);
+                navigate(newNotePath(null, addFor));
+              }}
+            >
+              <span className="setting-icon">
+                <NoteIcon />
+              </span>
+              <span className="setting-text">
+                <span className="setting-title">練習ノートを登録</span>
+                <span className="setting-sub">実際に練習した内容の記録</span>
+              </span>
+              <ChevronRightIcon size={18} className="setting-chevron" />
+            </button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -202,7 +249,7 @@ interface DayCellProps {
 
 function DayCell({ date, weekday, isToday, isSelected, types, noteCount, onSelect }: DayCellProps) {
   const day = parseDate(date).getDate();
-  const typeList = EVENT_TYPES.filter((t) => types?.has(t.value));
+  const typeList = ALL_EVENT_TYPES.filter((t) => types?.has(t.value));
   const label = [
     `${day}日`,
     isToday ? '今日' : '',
