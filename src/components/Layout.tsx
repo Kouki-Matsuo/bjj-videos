@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { goBack, navigate } from '../router';
-import { CalendarIcon, ChevronLeftIcon, GearIcon, HomeIcon, NoteIcon, PlusCircleIcon } from './Icons';
+import { CalendarIcon, ChevronLeftIcon, DumbbellIcon, GearIcon, HomeIcon, NoteIcon } from './Icons';
 
 interface HeaderProps {
   title: string;
@@ -32,14 +32,14 @@ export function PageHeader({ title, backTo, onBack, right }: HeaderProps) {
   );
 }
 
-type Tab = 'list' | 'new' | 'calendar' | 'notes' | 'settings';
+type Tab = 'list' | 'calendar' | 'notes' | 'strength' | 'settings';
 
 export function BottomNav({ active }: { active: Tab }) {
   const items: { tab: Tab; label: string; path: string; icon: ReactNode }[] = [
     { tab: 'list', label: '一覧', path: '/', icon: <HomeIcon size={22} filled={active === 'list'} /> },
-    { tab: 'new', label: '登録', path: '/new', icon: <PlusCircleIcon size={22} /> },
     { tab: 'calendar', label: 'カレンダー', path: '/calendar', icon: <CalendarIcon size={22} /> },
     { tab: 'notes', label: '練習ノート', path: '/notes', icon: <NoteIcon size={22} /> },
+    { tab: 'strength', label: '筋トレ', path: '/strength', icon: <DumbbellIcon size={22} /> },
     { tab: 'settings', label: '設定', path: '/settings', icon: <GearIcon size={22} /> },
   ];
   return (
@@ -50,7 +50,7 @@ export function BottomNav({ active }: { active: Tab }) {
           type="button"
           className={`nav-item ${active === item.tab ? 'active' : ''}`}
           aria-current={active === item.tab ? 'page' : undefined}
-          onClick={() => active !== item.tab && navigate(item.path, { replace: item.tab !== 'new' })}
+          onClick={() => active !== item.tab && navigate(item.path, { replace: true })}
         >
           {item.icon}
           <span>{item.label}</span>

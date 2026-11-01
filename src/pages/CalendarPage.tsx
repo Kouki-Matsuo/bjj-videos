@@ -4,7 +4,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useAppData } from '../AppData';
 import { Sheet } from '../components/Dialog';
-import { CalendarIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, NoteIcon } from '../components/Icons';
+import { CalendarIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, DumbbellIcon, NoteIcon } from '../components/Icons';
 import { BottomNav, PageHeader } from '../components/Layout';
 import { RelatedVideo, ResultBadge } from '../components/Practice';
 import { navigate, newNotePath } from '../router';
@@ -22,11 +22,12 @@ import {
   toDateString,
 } from '../utils/calendar';
 import { formatPracticeDate, isDateOnly, todayString } from '../utils/practice';
+import { PlanCard, RecordCard } from './strength/StrengthCards';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export function CalendarPage({ date }: { date: string | null }) {
-  const { events, practiceNotes, loadError } = useAppData();
+  const { events, practiceNotes, strengthPlans, strengthRecords, loadError } = useAppData();
   const today = todayString();
   const selected = isDateOnly(date) ? date : today;
   const [year, month] = selected.split('-').map(Number);
@@ -43,6 +44,18 @@ export function CalendarPage({ date }: { date: string | null }) {
     practiceNotes.forEach((n) => map.set(n.practiceDate, (map.get(n.practiceDate) ?? 0) + 1));
     return map;
   }, [practiceNotes]);
+
+  // 筋トレ:実績は実施日、予定は予定日で表示します。実績がある予定はマークを実績側にまとめ、二重に数えません
+  const strengthMarks = useMemo(() => {
+    const map = new Map<string, { plan: boolean; record: boolean }>();
+    const get = (d: string) => map.get(d) ?? map.set(d, { plan: false, record: false }).get(d)!;
+    const recordedPlans = new Set(strengthRecords.map((r) => r.planId).filter(Boolean));
+    strengthRecords.forEach((r) => (get(r.date).record = true));
+    strengthPlans.filter((p) => !recordedPlans.has(p.id)).forEach((p) => (get(p.date).plan = true));
+    return map;
+  }, [strengthPlans, strengthRecords]);
+  const dayPlans = useMemo(() => strengthPlans.filter((p) => p.date === selected), [strengthPlans, selected]);
+  const dayRecords = useMemo(() => strengthRecords.filter((r) => r.date === selected), [strengthRecords, selected]);
 
   const dayEvents = useMemo(() => sortDayEvents(events.filter((e) => eventCoversDate(e, selected))), [events, selected]);
   // 同じ日のノートは作成した順に並べます
@@ -117,6 +130,7 @@ export function CalendarPage({ date }: { date: string | null }) {
                   isSelected={d === selected}
                   types={typesByDate.get(d)}
                   noteCount={noteCountByDate.get(d) ?? 0}
+                  strength={strengthMarks.get(d)}
                   onSelect={() => tapDate(d)}
                 />
               ) : (
@@ -140,9 +154,19 @@ export function CalendarPage({ date }: { date: string | null }) {
           </span>
           練習記録
         </li>
+        <li>
+          <span className="strength-plan-mark" />
+          筋トレ予定
+        </li>
+        <li>
+          <span className="strength-record-mark">
+            <CheckIcon size={10} strokeWidth={3} />
+          </span>
+          筋トレ実績
+        </li>
       </ul>
 
-      <p className="hint cal-hint">日付をダブルタップすると、予定・練習ノートを登録できます</p>
+      <p className="hint cal-hint">日付をダブルタップすると、予定・練習ノート・筋トレを登録できます</p>
 
       <section className="day-panel" aria-label="選択した日の予定と練習記録">
         <h2 className="day-title">
@@ -189,6 +213,20 @@ export function CalendarPage({ date }: { date: string | null }) {
         ) : (
           <p className="day-empty">この日の練習記録はありません</p>
         )}
+
+        <h3 className="day-section-title">筋トレ</h3>
+        {dayPlans.length || dayRecords.length ? (
+          <div className="video-list">
+            {dayPlans.map((p) => (
+              <PlanCard key={p.id} plan={p} showDate={false} />
+            ))}
+            {dayRecords.map((r) => (
+              <RecordCard key={r.id} record={r} showDate={false} />
+            ))}
+          </div>
+        ) : (
+          <p className="day-empty">この日の筋トレ予定・実績はありません</p>
+        )}
       </section>
 
       <BottomNav active="calendar" />
@@ -209,7 +247,7 @@ export function CalendarPage({ date }: { date: string | null }) {
               </span>
               <span className="setting-text">
                 <span className="setting-title">予定を登録</span>
-                <span className="setting-sub">練習・試合・筋トレなどの予定</span>
+                <span className="setting-sub">練習・試合などの予定</span>
               </span>
               <ChevronRightIcon size={18} className="setting-chevron" />
             </button>
@@ -230,6 +268,40 @@ export function CalendarPage({ date }: { date: string | null }) {
               </span>
               <ChevronRightIcon size={18} className="setting-chevron" />
             </button>
+            <button
+              type="button"
+              className="add-menu-item"
+              onClick={() => {
+                setAddFor(null);
+                navigate(`/strength/plans/new?date=${addFor}`);
+              }}
+            >
+              <span className="setting-icon">
+                <DumbbellIcon />
+              </span>
+              <span className="setting-text">
+                <span className="setting-title">筋トレ予定を登録</span>
+                <span className="setting-sub">種目ごとの目標重量・回数・セット数</span>
+              </span>
+              <ChevronRightIcon size={18} className="setting-chevron" />
+            </button>
+            <button
+              type="button"
+              className="add-menu-item"
+              onClick={() => {
+                setAddFor(null);
+                navigate(`/strength/records/new?date=${addFor}`);
+              }}
+            >
+              <span className="setting-icon">
+                <CheckIcon />
+              </span>
+              <span className="setting-text">
+                <span className="setting-title">筋トレ実績を記録</span>
+                <span className="setting-sub">実際に行った重量・回数をセットごとに記録</span>
+              </span>
+              <ChevronRightIcon size={18} className="setting-chevron" />
+            </button>
           </div>
         </Sheet>
       )}
@@ -244,10 +316,11 @@ interface DayCellProps {
   isSelected: boolean;
   types?: Set<EventType>;
   noteCount: number;
+  strength?: { plan: boolean; record: boolean };
   onSelect: () => void;
 }
 
-function DayCell({ date, weekday, isToday, isSelected, types, noteCount, onSelect }: DayCellProps) {
+function DayCell({ date, weekday, isToday, isSelected, types, noteCount, strength, onSelect }: DayCellProps) {
   const day = parseDate(date).getDate();
   const typeList = ALL_EVENT_TYPES.filter((t) => types?.has(t.value));
   const label = [
@@ -255,6 +328,8 @@ function DayCell({ date, weekday, isToday, isSelected, types, noteCount, onSelec
     isToday ? '今日' : '',
     typeList.length ? `予定:${typeList.map((t) => t.label).join('・')}` : '',
     noteCount ? `練習記録${noteCount}件` : '',
+    strength?.plan ? '筋トレ予定あり' : '',
+    strength?.record ? '筋トレ実績あり' : '',
   ]
     .filter(Boolean)
     .join('、');
@@ -276,6 +351,12 @@ function DayCell({ date, weekday, isToday, isSelected, types, noteCount, onSelec
         ))}
         {noteCount > 0 && (
           <span className="record-mark">
+            <CheckIcon size={9} strokeWidth={3.2} />
+          </span>
+        )}
+        {strength?.plan && <span className="strength-plan-mark" />}
+        {strength?.record && (
+          <span className="strength-record-mark">
             <CheckIcon size={9} strokeWidth={3.2} />
           </span>
         )}

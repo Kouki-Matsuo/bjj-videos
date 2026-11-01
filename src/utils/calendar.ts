@@ -7,12 +7,15 @@ import { isDateOnly } from './practice';
 export const EVENT_TYPES: { value: EventType; label: string }[] = [
   { value: 'practice', label: '練習' },
   { value: 'match', label: '試合' },
-  { value: 'strength', label: '筋トレ' },
   { value: 'other', label: 'その他' },
 ];
 
-/** 以前の版で選べた種類。新しくは選べませんが、登録済みの予定やバックアップはそのまま表示・復元できます */
+/**
+ * 以前の版で選べた種類。新しくは選べませんが、登録済みの予定やバックアップはそのまま表示・復元できます
+ * (筋トレの予定は「筋トレ」タブの筋トレ予定で管理します)
+ */
 const LEGACY_EVENT_TYPES: { value: EventType; label: string }[] = [
+  { value: 'strength', label: '筋トレ' },
   { value: 'seminar', label: 'セミナー' },
   { value: 'visit', label: '出稽古' },
 ];

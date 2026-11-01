@@ -128,6 +128,12 @@ export const CalendarIcon = (p: IconProps) => (
 export const CheckIcon = (p: IconProps) => (
   <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7.5" /></Svg>
 );
+export const DumbbellIcon = (p: IconProps) => (
+  <Svg {...p}><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11" /></Svg>
+);
+export const ChartIcon = (p: IconProps) => (
+  <Svg {...p}><path d="M4 4v16h16" /><path d="m7.5 14.5 3.5-4 3 2.5 5-6" /></Svg>
+);
 export const MinusIcon = (p: IconProps) => (
   <Svg {...p}><path d="M5 12h14" /></Svg>
 );

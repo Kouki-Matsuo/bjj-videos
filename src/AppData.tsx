@@ -7,7 +7,11 @@ import {
   EMPTY_FILTER,
   type CalendarEvent,
   type Category,
+  type Exercise,
   type PracticeNote,
+  type StrengthPlan,
+  type StrengthRecord,
+  type StrengthVideo,
   type Video,
   type VideoFilter,
 } from './types';
@@ -22,6 +26,11 @@ interface AppDataValue {
   practiceNotes: PracticeNote[];
   /** カレンダー予定(開始日の順) */
   events: CalendarEvent[];
+  /** 筋トレ:種目(並び順)・動画・予定・実績(日付の新しい順) */
+  exercises: Exercise[];
+  strengthVideos: StrengthVideo[];
+  strengthPlans: StrengthPlan[];
+  strengthRecords: StrengthRecord[];
   /** 全動画で使われているタグ(使用回数の多い順) */
   allTags: string[];
   reload: () => Promise<void>;
@@ -41,24 +50,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [techniqueTypes, setTechniqueTypes] = useState<Category[]>([]);
   const [practiceNotes, setPracticeNotes] = useState<PracticeNote[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [strength, setStrength] = useState<{
+    exercises: Exercise[];
+    strengthVideos: StrengthVideo[];
+    strengthPlans: StrengthPlan[];
+    strengthRecords: StrengthRecord[];
+  }>({ exercises: [], strengthVideos: [], strengthPlans: [], strengthRecords: [] });
   const [filter, setFilter] = useState<VideoFilter>(EMPTY_FILTER);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 
   const reload = useCallback(async () => {
     try {
-      const [v, p, t, n, e] = await Promise.all([
+      const [v, p, t, n, e, ex, sv, sp, sr] = await Promise.all([
         repository.listVideos(),
         repository.listCategories('positions'),
         repository.listCategories('techniqueTypes'),
         repository.listPracticeNotes(),
         repository.listEvents(),
+        repository.listExercises(),
+        repository.listStrengthVideos(),
+        repository.listStrengthPlans(),
+        repository.listStrengthRecords(),
       ]);
       setVideos(v);
       setPositions(p);
       setTechniqueTypes(t);
       setPracticeNotes(n);
       setEvents(e);
+      setStrength({ exercises: ex, strengthVideos: sv, strengthPlans: sp, strengthRecords: sr });
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'データの読み込みに失敗しました。');
@@ -92,6 +112,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       techniqueTypes,
       practiceNotes,
       events,
+      ...strength,
       allTags,
       reload,
       filter,
@@ -99,7 +120,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toast,
       showToast,
     }),
-    [loading, loadError, videos, positions, techniqueTypes, practiceNotes, events, allTags, reload, filter, toast, showToast],
+    [loading, loadError, videos, positions, techniqueTypes, practiceNotes, events, strength, allTags, reload, filter, toast, showToast],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

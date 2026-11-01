@@ -11,6 +11,11 @@ import { PracticeListPage } from './pages/PracticeListPage';
 import { PracticeNoteDetailPage } from './pages/PracticeNoteDetailPage';
 import { PracticeNoteFormPage } from './pages/PracticeNoteFormPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ExerciseFormPage } from './pages/strength/ExerciseFormPage';
+import { PlanDetailPage, PlanFormPage } from './pages/strength/PlanPages';
+import { RecordDetailPage, RecordFormPage } from './pages/strength/RecordPages';
+import { StrengthPage } from './pages/strength/StrengthPage';
+import { StrengthVideoDetailPage, StrengthVideoFormPage } from './pages/strength/StrengthVideoPages';
 import { TagManagePage } from './pages/TagManagePage';
 import { VideoFormPage } from './pages/VideoFormPage';
 import { useRoute } from './router';
@@ -68,6 +73,43 @@ export function App() {
       break;
     case 'eventEdit':
       page = <EventFormPage key={`event-edit-${route.id}`} eventId={route.id} />;
+      break;
+    case 'strength':
+      page = <StrengthPage tab={route.tab} exerciseId={route.exerciseId} />;
+      break;
+    case 'exerciseForm':
+      page = <ExerciseFormPage key={`exercise-${route.id ?? 'new'}`} exerciseId={route.id} />;
+      break;
+    case 'sVideoForm':
+      page = (
+        <StrengthVideoFormPage
+          key={`svideo-${route.id ?? 'new'}`}
+          videoId={route.id}
+          initialExerciseId={route.exerciseId}
+        />
+      );
+      break;
+    case 'sVideoDetail':
+      page = <StrengthVideoDetailPage videoId={route.id} />;
+      break;
+    case 'planForm':
+      page = <PlanFormPage key={`plan-${route.id ?? `new-${route.date}`}`} planId={route.id} initialDate={route.date} />;
+      break;
+    case 'planDetail':
+      page = <PlanDetailPage planId={route.id} />;
+      break;
+    case 'recordForm':
+      page = (
+        <RecordFormPage
+          key={`record-${route.id ?? `new-${route.date}-${route.planId}`}`}
+          recordId={route.id}
+          initialDate={route.date}
+          planId={route.planId}
+        />
+      );
+      break;
+    case 'recordDetail':
+      page = <RecordDetailPage recordId={route.id} />;
       break;
     default:
       page = <ListPage />;

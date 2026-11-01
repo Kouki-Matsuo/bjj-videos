@@ -76,8 +76,8 @@ export interface PracticeNote {
 export type PracticeNoteInput = Omit<PracticeNote, 'id' | 'createdAt' | 'updatedAt'>;
 
 /**
- * カレンダー予定の種類。practice: 練習 / match: 試合 / strength: 筋トレ / other: その他
- * seminar(セミナー)・visit(出稽古)は以前の版で選べた種類で、登録済みの予定を表示するために残しています
+ * カレンダー予定の種類。practice: 練習 / match: 試合 / other: その他
+ * strength(筋トレ)・seminar(セミナー)・visit(出稽古)は以前の版で選べた種類で、登録済みの予定を表示するために残しています
  */
 export type EventType = 'practice' | 'match' | 'strength' | 'other' | 'seminar' | 'visit';
 
@@ -100,3 +100,104 @@ export interface CalendarEvent {
 }
 
 export type CalendarEventInput = Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>;
+
+// ===================== 筋トレ =====================
+
+/** 種目の種類。weight: ウェイト / bodyweight: 自重 / time: 時間 */
+export type ExerciseKind = 'weight' | 'bodyweight' | 'time';
+
+/** 筋トレ種目(スクワットなど) */
+export interface Exercise {
+  id: string;
+  name: string;
+  kind: ExerciseKind;
+  /** 鍛える部位(「胸」「脚」など) */
+  bodyParts: string[];
+  sortOrder: number;
+  /** 初期データとして登録された種目かどうか */
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ExerciseInput = Pick<Exercise, 'name' | 'kind' | 'bodyParts'>;
+
+/** 筋トレの参考動画(柔術の動画とは別に管理します) */
+export interface StrengthVideo {
+  id: string;
+  url: string;
+  title: string;
+  /** 関連する種目のID(未設定なら null)。1つの種目に複数の動画を紐付けられます */
+  exerciseId: string | null;
+  bodyParts: string[];
+  tags: string[];
+  notes: string;
+  isFavorite: boolean;
+  thumbnailUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StrengthVideoInput = Omit<StrengthVideo, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** 筋トレ予定の状態。planned: 予定 / done: 完了 / skipped: 未実施 */
+export type PlanStatus = 'planned' | 'done' | 'skipped';
+
+/** 予定の中の1種目分の目標 */
+export interface PlanItem {
+  id: string;
+  exerciseId: string;
+  /** 目標重量(kg) */
+  targetWeight: number | null;
+  /** 目標回数(時間制の種目では目標秒数) */
+  targetReps: number | null;
+  targetSets: number | null;
+  /** 参考にする筋トレ動画のID */
+  videoIds: string[];
+}
+
+/** 筋トレ予定(1日に複数の種目を登録できます) */
+export interface StrengthPlan {
+  id: string;
+  /** 予定日(YYYY-MM-DD) */
+  date: string;
+  items: PlanItem[];
+  status: PlanStatus;
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StrengthPlanInput = Omit<StrengthPlan, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** 1セット分の記録 */
+export interface SetRecord {
+  /** 重量(kg)。自重なら加重した重さ(なしは null) */
+  weight: number | null;
+  /** 回数(時間制の種目では null) */
+  reps: number | null;
+  /** 秒数(時間制の種目のみ) */
+  seconds: number | null;
+}
+
+/** 実績の中の1種目分 */
+export interface RecordEntry {
+  id: string;
+  exerciseId: string;
+  sets: SetRecord[];
+}
+
+/** 筋トレ実績(実施日を基準に管理します) */
+export interface StrengthRecord {
+  id: string;
+  /** 実施日(YYYY-MM-DD) */
+  date: string;
+  /** 予定から入力した場合はその予定のID */
+  planId: string | null;
+  entries: RecordEntry[];
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StrengthRecordInput = Omit<StrengthRecord, 'id' | 'createdAt' | 'updatedAt'>;

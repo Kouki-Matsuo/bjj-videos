@@ -1,12 +1,13 @@
 // IndexedDB(ブラウザ内のデータベース)を開く処理と、初期データの登録です。
 // 画面のコードからはこのファイルを直接使わず、repository.ts を通して使います。
 
-import type { Category } from '../types';
+import type { Category, Exercise } from '../types';
+import { DEFAULT_EXERCISES } from '../utils/strength';
 import { createId } from '../utils/id';
 
 const DB_NAME = 'bjj-video-manager';
-// 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加
-const DB_VERSION = 3;
+// 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加 / 4: 筋トレ(種目・動画・予定・実績)を追加
+const DB_VERSION = 4;
 
 export const STORES = {
   videos: 'videos',
@@ -14,6 +15,10 @@ export const STORES = {
   techniqueTypes: 'techniqueTypes',
   practiceNotes: 'practiceNotes',
   events: 'events',
+  exercises: 'exercises',
+  strengthVideos: 'strengthVideos',
+  strengthPlans: 'strengthPlans',
+  strengthRecords: 'strengthRecords',
 } as const;
 
 const DEFAULT_POSITIONS = [
@@ -38,6 +43,19 @@ const DEFAULT_TECHNIQUE_TYPES = [
   'ポジションキープ・コントロール',
   'その他',
 ];
+
+/** 初期の筋トレ種目 */
+export function defaultExercises(): Exercise[] {
+  const now = new Date().toISOString();
+  return DEFAULT_EXERCISES.map((e, i) => ({
+    ...e,
+    id: createId(),
+    sortOrder: i,
+    isDefault: true,
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
 
 function toCategories(names: string[]): Category[] {
   return names.map((name, i) => ({ id: createId(), name, sortOrder: i, isDefault: true }));
@@ -80,6 +98,13 @@ export function openDb(): Promise<IDBDatabase> {
       if (event.oldVersion < 3) {
         const events = db.createObjectStore(STORES.events, { keyPath: 'id' });
         events.createIndex('startDate', 'startDate');
+      }
+      if (event.oldVersion < 4) {
+        const exercises = db.createObjectStore(STORES.exercises, { keyPath: 'id' });
+        defaultExercises().forEach((e) => exercises.put(e));
+        db.createObjectStore(STORES.strengthVideos, { keyPath: 'id' });
+        db.createObjectStore(STORES.strengthPlans, { keyPath: 'id' }).createIndex('date', 'date');
+        db.createObjectStore(STORES.strengthRecords, { keyPath: 'id' }).createIndex('date', 'date');
       }
     };
     req.onsuccess = () => {

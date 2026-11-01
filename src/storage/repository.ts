@@ -7,8 +7,17 @@ import type {
   CalendarEventInput,
   Category,
   CategoryKind,
+  Exercise,
+  ExerciseInput,
+  PlanStatus,
   PracticeNote,
   PracticeNoteInput,
+  StrengthPlan,
+  StrengthPlanInput,
+  StrengthRecord,
+  StrengthRecordInput,
+  StrengthVideo,
+  StrengthVideoInput,
   Video,
   VideoInput,
 } from '../types';
@@ -35,6 +44,35 @@ export interface DataRepository {
   createEvent(input: CalendarEventInput): Promise<CalendarEvent>;
   updateEvent(id: string, input: CalendarEventInput): Promise<CalendarEvent>;
   deleteEvent(id: string): Promise<void>;
+
+  // ----- 筋トレ -----
+  /** 筋トレ種目の一覧(並び順) */
+  listExercises(): Promise<Exercise[]>;
+  createExercise(input: ExerciseInput): Promise<Exercise>;
+  updateExercise(id: string, input: ExerciseInput): Promise<Exercise>;
+  /** 種目を削除します。紐付いた動画は「種目なし」になり、予定・実績は「削除された種目」として残ります */
+  deleteExercise(id: string): Promise<void>;
+
+  listStrengthVideos(): Promise<StrengthVideo[]>;
+  createStrengthVideo(input: StrengthVideoInput): Promise<StrengthVideo>;
+  updateStrengthVideo(id: string, input: StrengthVideoInput): Promise<StrengthVideo>;
+  setStrengthVideoFavorite(id: string, isFavorite: boolean): Promise<void>;
+  /** 動画を削除し、予定に紐付けていた分も外します */
+  deleteStrengthVideo(id: string): Promise<void>;
+
+  listStrengthPlans(): Promise<StrengthPlan[]>;
+  createStrengthPlan(input: StrengthPlanInput): Promise<StrengthPlan>;
+  updateStrengthPlan(id: string, input: StrengthPlanInput): Promise<StrengthPlan>;
+  setPlanStatus(id: string, status: PlanStatus): Promise<void>;
+  /** 予定を削除します。この予定から入力した実績は残ります */
+  deleteStrengthPlan(id: string): Promise<void>;
+
+  listStrengthRecords(): Promise<StrengthRecord[]>;
+  /** 実績を保存します。予定から入力した場合は、その予定を「完了」にします(1つの予定に実績は1件まで) */
+  createStrengthRecord(input: StrengthRecordInput): Promise<StrengthRecord>;
+  updateStrengthRecord(id: string, input: StrengthRecordInput): Promise<StrengthRecord>;
+  /** 実績を削除します。予定から入力した実績なら、その予定を「予定」に戻します */
+  deleteStrengthRecord(id: string): Promise<void>;
 
   listCategories(kind: CategoryKind): Promise<Category[]>;
   addCategory(kind: CategoryKind, name: string): Promise<Category>;

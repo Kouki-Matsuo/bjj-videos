@@ -1,14 +1,29 @@
 // バックアップ(JSON)の形式と、読み込んだファイルの検証処理です。
 // 検証はデータベースに書き込む前に全て終わらせるので、不正なファイルで既存データが壊れることはありません。
 
-import type { CalendarEvent, Category, PracticeNote, Video } from '../types';
+import type {
+  CalendarEvent,
+  Category,
+  Exercise,
+  PlanItem,
+  PracticeNote,
+  RecordEntry,
+  StrengthPlan,
+  StrengthRecord,
+  StrengthVideo,
+  Video,
+} from '../types';
+import { isExerciseKind, isPlanStatus, parseNonNegative, parsePositive } from '../utils/strength';
 import { isEventType, isTimeString, validateEventDates } from '../utils/calendar';
 import { isDateOnly, isPracticeResult, parsePracticeCount } from '../utils/practice';
 import { isAllowedVideoUrl } from '../utils/url';
 
 export const BACKUP_APP_ID = 'bjj-video-manager';
-/** 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加(古いバージョンのファイルも引き続き読み込めます) */
-export const BACKUP_VERSION = 3;
+/**
+ * 1: 動画・分類 / 2: 練習ノートを追加 / 3: カレンダー予定を追加 / 4: 筋トレを追加
+ * (古いバージョンのファイルも引き続き読み込めます)
+ */
+export const BACKUP_VERSION = 4;
 
 export interface BackupData {
   app: typeof BACKUP_APP_ID;
@@ -19,6 +34,11 @@ export interface BackupData {
   videos: Video[];
   practiceNotes: PracticeNote[];
   events: CalendarEvent[];
+  /** 筋トレ種目。筋トレ機能より前のファイルでは null */
+  exercises: Exercise[] | null;
+  strengthVideos: StrengthVideo[];
+  strengthPlans: StrengthPlan[];
+  strengthRecords: StrengthRecord[];
 }
 
 /** replace: 既存データを置き換える / merge: 既存データに追加する */
@@ -32,6 +52,9 @@ export interface ImportResult {
   skippedNotes: number;
   addedEvents: number;
   skippedEvents: number;
+  /** 筋トレの動画・予定・実績 */
+  addedStrength: number;
+  skippedStrength: number;
 }
 
 export class BackupValidationError extends Error {}
@@ -178,6 +201,152 @@ function validateEvents(value: unknown): CalendarEvent[] {
   });
 }
 
+// ---------- 筋トレ ----------
+
+const stringList = (v: unknown) =>
+  Array.isArray(v) ? Array.from(new Set(v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean))) : [];
+
+/** 配列の各要素に id があり、重複していないか確認します */
+function checkIds(value: unknown, label: string): Record<string, unknown>[] {
+  if (!Array.isArray(value)) throw new BackupValidationError(`${label}の一覧の形式が正しくありません。`);
+  const ids = new Set<string>();
+  return value.map((item, i) => {
+    const where = `${label}の${i + 1}件目`;
+    if (!isObject(item)) throw new BackupValidationError(`${where}の形式が正しくありません。`);
+    if (typeof item.id !== 'string' || item.id === '') throw new BackupValidationError(`${where}のIDが正しくありません。`);
+    if (ids.has(item.id)) throw new BackupValidationError(`${where}のIDが重複しています。`);
+    ids.add(item.id);
+    if (!isDateString(item.createdAt) || !isDateString(item.updatedAt))
+      throw new BackupValidationError(`${where}の日時が正しくありません。`);
+    return item;
+  });
+}
+
+function validateExercises(value: unknown): Exercise[] | null {
+  if (value === undefined) return null;
+  const names = new Set<string>();
+  return checkIds(value, '筋トレ種目').map((e, i) => {
+    const where = `筋トレ種目の${i + 1}件目`;
+    if (typeof e.name !== 'string' || !e.name.trim()) throw new BackupValidationError(`${where}の種目名が空です。`);
+    const key = e.name.trim().toLowerCase();
+    if (names.has(key)) throw new BackupValidationError(`${where}の種目名が重複しています。`);
+    names.add(key);
+    if (!isExerciseKind(e.kind)) throw new BackupValidationError(`${where}の種類が正しくありません。`);
+    return {
+      id: e.id as string,
+      name: e.name.trim(),
+      kind: e.kind,
+      bodyParts: stringList(e.bodyParts),
+      sortOrder: typeof e.sortOrder === 'number' && Number.isFinite(e.sortOrder) ? e.sortOrder : i,
+      isDefault: e.isDefault === true,
+      createdAt: e.createdAt as string,
+      updatedAt: e.updatedAt as string,
+    };
+  });
+}
+
+function validateStrengthVideos(value: unknown, exerciseIds: Set<string> | null): StrengthVideo[] {
+  if (value === undefined) return [];
+  return checkIds(value, '筋トレ動画').map((v, i) => {
+    const where = `筋トレ動画の${i + 1}件目`;
+    if (typeof v.url !== 'string' || !isAllowedVideoUrl(v.url))
+      throw new BackupValidationError(`${where}の動画URLが正しくありません。`);
+    if (typeof v.title !== 'string' || !v.title.trim()) throw new BackupValidationError(`${where}のタイトルが空です。`);
+    const exerciseId = typeof v.exerciseId === 'string' && v.exerciseId ? v.exerciseId : null;
+    if (exerciseId && exerciseIds && !exerciseIds.has(exerciseId))
+      throw new BackupValidationError(`${where}の種目がファイル内の種目に存在しません。`);
+    return {
+      id: v.id as string,
+      url: v.url,
+      title: v.title.trim(),
+      exerciseId,
+      bodyParts: stringList(v.bodyParts),
+      tags: stringList(v.tags),
+      notes: typeof v.notes === 'string' ? v.notes : '',
+      isFavorite: v.isFavorite === true,
+      thumbnailUrl:
+        typeof v.thumbnailUrl === 'string' && /^https?:\/\//i.test(v.thumbnailUrl) ? v.thumbnailUrl : null,
+      createdAt: v.createdAt as string,
+      updatedAt: v.updatedAt as string,
+    };
+  });
+}
+
+function validatePlanItems(value: unknown, where: string): PlanItem[] {
+  if (!Array.isArray(value) || !value.length) throw new BackupValidationError(`${where}の種目が正しくありません。`);
+  return value.map((item, i) => {
+    if (!isObject(item) || typeof item.exerciseId !== 'string' || !item.exerciseId)
+      throw new BackupValidationError(`${where}の${i + 1}種目目が正しくありません。`);
+    return {
+      id: typeof item.id === 'string' && item.id ? item.id : `${i}`,
+      exerciseId: item.exerciseId,
+      targetWeight: parseNonNegative(item.targetWeight),
+      targetReps: parsePositive(item.targetReps, 99999),
+      targetSets: parsePositive(item.targetSets, 100),
+      videoIds: stringList(item.videoIds),
+    };
+  });
+}
+
+function validateEntries(value: unknown, where: string): RecordEntry[] {
+  if (!Array.isArray(value) || !value.length) throw new BackupValidationError(`${where}の種目が正しくありません。`);
+  return value.map((entry, i) => {
+    if (!isObject(entry) || typeof entry.exerciseId !== 'string' || !entry.exerciseId || !Array.isArray(entry.sets))
+      throw new BackupValidationError(`${where}の${i + 1}種目目が正しくありません。`);
+    return {
+      id: typeof entry.id === 'string' && entry.id ? entry.id : `${i}`,
+      exerciseId: entry.exerciseId,
+      sets: entry.sets.map((s, j) => {
+        if (!isObject(s)) throw new BackupValidationError(`${where}の${i + 1}種目目の${j + 1}セット目が正しくありません。`);
+        return {
+          weight: parseNonNegative(s.weight),
+          reps: parsePositive(s.reps, 99999),
+          seconds: parsePositive(s.seconds, 99999),
+        };
+      }),
+    };
+  });
+}
+
+function validateStrengthPlans(value: unknown): StrengthPlan[] {
+  if (value === undefined) return [];
+  return checkIds(value, '筋トレ予定').map((p, i) => {
+    const where = `筋トレ予定の${i + 1}件目`;
+    if (!isDateOnly(p.date)) throw new BackupValidationError(`${where}の予定日が正しくありません。`);
+    if (!isPlanStatus(p.status)) throw new BackupValidationError(`${where}の状態が正しくありません。`);
+    return {
+      id: p.id as string,
+      date: p.date,
+      items: validatePlanItems(p.items, where),
+      status: p.status,
+      memo: typeof p.memo === 'string' ? p.memo : '',
+      createdAt: p.createdAt as string,
+      updatedAt: p.updatedAt as string,
+    };
+  });
+}
+
+function validateStrengthRecords(value: unknown): StrengthRecord[] {
+  if (value === undefined) return [];
+  const planIds = new Set<string>();
+  return checkIds(value, '筋トレ実績').map((r, i) => {
+    const where = `筋トレ実績の${i + 1}件目`;
+    if (!isDateOnly(r.date)) throw new BackupValidationError(`${where}の実施日が正しくありません。`);
+    const planId = typeof r.planId === 'string' && r.planId ? r.planId : null;
+    if (planId && planIds.has(planId)) throw new BackupValidationError(`${where}:同じ予定に実績が重複しています。`);
+    if (planId) planIds.add(planId);
+    return {
+      id: r.id as string,
+      date: r.date,
+      planId,
+      entries: validateEntries(r.entries, where),
+      memo: typeof r.memo === 'string' ? r.memo : '',
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+    };
+  });
+}
+
 /** JSON文字列を解析・検証し、問題なければ BackupData を返します。問題があれば日本語のエラーを投げます */
 export function parseBackup(text: string): BackupData {
   let json: unknown;
@@ -199,6 +368,13 @@ export function parseBackup(text: string): BackupData {
   );
   const practiceNotes = validatePracticeNotes(json.practiceNotes);
   const events = validateEvents(json.events);
+  const exercises = validateExercises(json.exercises);
+  const strengthVideos = validateStrengthVideos(
+    json.strengthVideos,
+    exercises ? new Set(exercises.map((e) => e.id)) : null,
+  );
+  const strengthPlans = validateStrengthPlans(json.strengthPlans);
+  const strengthRecords = validateStrengthRecords(json.strengthRecords);
   return {
     app: BACKUP_APP_ID,
     version: json.version,
@@ -208,5 +384,9 @@ export function parseBackup(text: string): BackupData {
     videos,
     practiceNotes,
     events,
+    exercises,
+    strengthVideos,
+    strengthPlans,
+    strengthRecords,
   };
 }
